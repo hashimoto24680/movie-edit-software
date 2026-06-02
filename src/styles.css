@@ -417,7 +417,7 @@ input[type="range"] {
     repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.08) 0 8px, transparent 8px 16px);
 }
 
-.preview-media span {
+.preview-media > span:not(.preview-resize-handle) {
   max-width: 90%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -445,6 +445,40 @@ input[type="range"] {
 .preview-text-layer.selected {
   outline: 2px solid #f3d77c;
   outline-offset: 2px;
+}
+
+.preview-resize-handle {
+  position: absolute;
+  z-index: 3;
+  width: 10px;
+  height: 10px;
+  border: 1px solid #101317;
+  background: #f3d77c;
+  pointer-events: auto;
+}
+
+.preview-resize-handle.top-left {
+  top: -7px;
+  left: -7px;
+  cursor: nwse-resize;
+}
+
+.preview-resize-handle.top-right {
+  top: -7px;
+  right: -7px;
+  cursor: nesw-resize;
+}
+
+.preview-resize-handle.bottom-left {
+  bottom: -7px;
+  left: -7px;
+  cursor: nesw-resize;
+}
+
+.preview-resize-handle.bottom-right {
+  right: -7px;
+  bottom: -7px;
+  cursor: nwse-resize;
 }
 
 .timeline-panel {

@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { resolveKeyboardShortcut } from "./core/keyboardShortcuts";
+import { calculateResizeScale } from "./core/previewResize";
 import { fpsToNumber, framesToSeconds, framesToTimecode, secondsToFrames } from "./core/time";
 import { hasSoloTracks, isTrackAudibleOrVisible } from "./core/trackVisibility";
 import { allClips } from "./core/validation";
@@ -320,6 +321,13 @@ function Preview() {
     current: Point2D;
     axis: "x" | "y" | null;
   } | null>(null);
+  const [resize, setResize] = useState<{
+    clipId: string;
+    startPointer: Point2D;
+    startScale: Point2D;
+    currentScale: Point2D;
+    direction: Point2D;
+  } | null>(null);
 
   const beginCanvasDrag = (event: ReactPointerEvent<HTMLButtonElement>, clip: Clip, position: Point2D) => {
     event.preventDefault();
@@ -328,12 +336,23 @@ function Preview() {
   };
 
   const updateCanvasDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!drag || !frameRef.current) return;
+    if (!frameRef.current) return;
     const rect = frameRef.current.getBoundingClientRect();
     const raw = {
       x: clamp((event.clientX - rect.left) / rect.width, 0, 1),
       y: clamp((event.clientY - rect.top) / rect.height, 0, 1)
     };
+    if (resize) {
+      const currentScale = calculateResizeScale(
+        resize.startScale,
+        { x: raw.x - resize.startPointer.x, y: raw.y - resize.startPointer.y },
+        resize.direction,
+        event.shiftKey
+      );
+      setResize({ ...resize, currentScale });
+      return;
+    }
+    if (!drag) return;
     let axis = drag.axis;
     if (event.ctrlKey && !axis) {
       axis = Math.abs(raw.x - drag.start.x) >= Math.abs(raw.y - drag.start.y) ? "x" : "y";
@@ -348,10 +367,34 @@ function Preview() {
   };
 
   const finishCanvasDrag = () => {
+    if (resize) {
+      setSelectedClipId(resize.clipId);
+      updateSelectedTransform({ scale: resize.currentScale });
+      setResize(null);
+      return;
+    }
     if (!drag) return;
     setSelectedClipId(drag.clipId);
     updateSelectedTransform({ position: drag.current });
     setDrag(null);
+  };
+
+  const beginResize = (
+    event: ReactPointerEvent<HTMLSpanElement>,
+    clip: Clip,
+    scale: Point2D,
+    direction: Point2D
+  ) => {
+    if (!frameRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = frameRef.current.getBoundingClientRect();
+    const startPointer = {
+      x: clamp((event.clientX - rect.left) / rect.width, 0, 1),
+      y: clamp((event.clientY - rect.top) / rect.height, 0, 1)
+    };
+    setSelectedClipId(clip.id);
+    setResize({ clipId: clip.id, startPointer, startScale: scale, currentScale: scale, direction });
   };
 
   return (
@@ -392,9 +435,35 @@ function Preview() {
             if (!("transform" in clip)) return null;
             const basePosition = staticPointValue(clip.transform.position, { x: 0.5, y: 0.5 });
             const position = drag?.clipId === clip.id ? drag.current : basePosition;
-            const scale = staticPointValue(clip.transform.scale, { x: 1, y: 1 });
+            const baseScale = staticPointValue(clip.transform.scale, { x: 1, y: 1 });
+            const scale = resize?.clipId === clip.id ? resize.currentScale : baseScale;
             const opacity = staticNumberValue(clip.transform.opacity, 1);
             const rotation = staticNumberValue(clip.transform.rotation, 0);
+            const isSelected = selectedClipId === clip.id;
+            const handles = isSelected ? (
+              <>
+                <span
+                  aria-hidden="true"
+                  className="preview-resize-handle top-left"
+                  onPointerDown={(event) => beginResize(event, clip, scale, { x: -1, y: -1 })}
+                />
+                <span
+                  aria-hidden="true"
+                  className="preview-resize-handle top-right"
+                  onPointerDown={(event) => beginResize(event, clip, scale, { x: 1, y: -1 })}
+                />
+                <span
+                  aria-hidden="true"
+                  className="preview-resize-handle bottom-left"
+                  onPointerDown={(event) => beginResize(event, clip, scale, { x: -1, y: 1 })}
+                />
+                <span
+                  aria-hidden="true"
+                  className="preview-resize-handle bottom-right"
+                  onPointerDown={(event) => beginResize(event, clip, scale, { x: 1, y: 1 })}
+                />
+              </>
+            ) : null;
 
             if (clip.type === "media") {
               const asset = project.assets.find((candidate) => candidate.id === clip.assetId);
@@ -403,7 +472,7 @@ function Preview() {
               const assetHeight = asset?.height ?? 1080;
               return (
                 <button
-                  className={`preview-media ${selectedClipId === clip.id ? "selected" : ""}`}
+                  className={`preview-media ${isSelected ? "selected" : ""}`}
                   key={clip.id}
                   style={{
                     left: `${position.x * 100}%`,
@@ -417,6 +486,7 @@ function Preview() {
                   title={clip.id}
                 >
                   <span>{clip.name}</span>
+                  {handles}
                 </button>
               );
             }
@@ -425,7 +495,7 @@ function Preview() {
               const textStyle = textStyleValue(clip.meta.textStyle);
               return (
                 <button
-                  className={`preview-text-layer ${clip.type} ${selectedClipId === clip.id ? "selected" : ""}`}
+                  className={`preview-text-layer ${clip.type} ${isSelected ? "selected" : ""}`}
                   key={clip.id}
                   style={{
                     left: `${position.x * 100}%`,
@@ -448,6 +518,7 @@ function Preview() {
                   title={clip.id}
                 >
                   {clip.text}
+                  {handles}
                 </button>
               );
             }

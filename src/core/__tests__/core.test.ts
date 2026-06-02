@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { applyCommandsChecked } from "../commands";
 import { emptyEffect } from "../defaults";
 import { resolveKeyboardShortcut } from "../keyboardShortcuts";
+import { calculateResizeScale } from "../previewResize";
 import { parseLlmResponseText } from "../llm";
 import { migrateProject } from "../migrations";
 import { ffmpegRenderer } from "../renderers/ffmpeg";
@@ -48,6 +49,24 @@ describe("project core", () => {
     expect(resolveKeyboardShortcut({ key: "d", ctrlKey: true, altKey: true })).toBeNull();
     expect(resolveKeyboardShortcut({ key: "Delete", altKey: true })).toBeNull();
     expect(resolveKeyboardShortcut({ key: "a" })).toBeNull();
+  });
+
+  it("calculates preview resize scale with corner directions and clamps", () => {
+    expect(calculateResizeScale({ x: 1, y: 1 }, { x: 0.2, y: 0.1 }, { x: 1, y: 1 }, false)).toEqual({
+      x: 1.4,
+      y: 1.2
+    });
+    expect(calculateResizeScale({ x: 1, y: 1 }, { x: -0.2, y: -0.1 }, { x: -1, y: -1 }, false)).toEqual({
+      x: 1.4,
+      y: 1.2
+    });
+    const proportional = calculateResizeScale({ x: 1, y: 0.8 }, { x: 0.1, y: 0.2 }, { x: 1, y: 1 }, true);
+    expect(proportional.x).toBeCloseTo(1.4);
+    expect(proportional.y).toBeCloseTo(1.2);
+    expect(calculateResizeScale({ x: 2.9, y: 0.2 }, { x: 1, y: -1 }, { x: 1, y: 1 }, false)).toEqual({
+      x: 3,
+      y: 0.1
+    });
   });
 
   it("keeps keyframed properties in the same schema path as static values", () => {

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+artifacts/
+.vite/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.local
+outputs/
+*.mp4.render.json
+*.mp4.ffmpeg.cmd

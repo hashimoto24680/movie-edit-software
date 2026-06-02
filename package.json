@@ -1,0 +1,33 @@
+{
+  "name": "movie-edit-software",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "desktop": "npm run build && electron .",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.1.1",
+    "lucide-react": "^0.561.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "vite": "^7.2.7",
+    "zod": "^4.1.13",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^24.10.2",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "electron": "^42.3.1",
+    "jsdom": "^27.3.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  }
+}

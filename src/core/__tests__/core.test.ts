@@ -271,6 +271,55 @@ describe("project core", () => {
     expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips)).toEqual([]);
   });
 
+  it("edits selected object start and duration through the store", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("cap-1");
+
+    useProjectStore.getState().setSelectedStartFrame(45);
+    useProjectStore.getState().setSelectedDurationFrames(30);
+
+    const caption = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips)
+      .find((clip) => clip.id === "cap-1");
+    expect(caption?.startFrame).toBe(45);
+    expect(caption?.durationFrames).toBe(30);
+    expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
+  });
+
+  it("rejects selected object timing edits that would overlap on the same layer", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("clip-talk-1");
+    const before = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips)
+      .find((clip) => clip.id === "clip-talk-1");
+
+    useProjectStore.getState().setSelectedStartFrame(30);
+
+    const after = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips)
+      .find((clip) => clip.id === "clip-talk-1");
+    expect(after?.startFrame).toBe(before?.startFrame);
+    expect(useProjectStore.getState().lastError).toContain("overlapping objects");
+  });
+
+  it("edits media object duration and source duration together through the store", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("clip-talk-1");
+
+    useProjectStore.getState().setSelectedDurationFrames(90);
+
+    const clip = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips)
+      .find((candidate) => candidate.id === "clip-talk-1");
+    expect(clip?.durationFrames).toBe(90);
+    expect(clip?.type === "media" ? clip.sourceDurationFrames : null).toBe(90);
+    expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
+  });
+
   it("runs GUI and LLM operations through the same reducer contract", () => {
     const llmText = JSON.stringify({
       message: "字幕を追加します。",

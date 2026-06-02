@@ -21,7 +21,7 @@ import {
   X
 } from "lucide-react";
 import { type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { fpsToNumber, framesToTimecode } from "./core/time";
+import { fpsToNumber, framesToSeconds, framesToTimecode, secondsToFrames } from "./core/time";
 import { allClips } from "./core/validation";
 import { useProjectStore } from "./store/projectStore";
 import type { AssetKind, Clip, Point2D, ProjectAst, StaticOrKeyframed, Track } from "./core/types";
@@ -799,6 +799,8 @@ function Inspector() {
   const updateSelectedText = useProjectStore((state) => state.updateSelectedText);
   const updateSelectedTextStyle = useProjectStore((state) => state.updateSelectedTextStyle);
   const setSelectedVolume = useProjectStore((state) => state.setSelectedVolume);
+  const setSelectedStartFrame = useProjectStore((state) => state.setSelectedStartFrame);
+  const setSelectedDurationFrames = useProjectStore((state) => state.setSelectedDurationFrames);
   const updateSelectedTransform = useProjectStore((state) => state.updateSelectedTransform);
   const clip = selectedClip(project, selectedClipId);
 
@@ -819,6 +821,8 @@ function Inspector() {
   const opacity = staticNumberValue(clip.transform.opacity, 1);
   const rotation = staticNumberValue(clip.transform.rotation, 0);
   const textStyle = "text" in clip ? textStyleValue(clip.meta.textStyle) : null;
+  const startSeconds = framesToSeconds(clip.startFrame, project.render.fps);
+  const durationSeconds = framesToSeconds(clip.durationFrames, project.render.fps);
 
   return (
     <aside className="inspector">
@@ -844,6 +848,34 @@ function Inspector() {
           <dd>{framesToTimecode(clip.durationFrames, project.render.fps)}</dd>
         </div>
       </dl>
+      <div className="section-title">
+        <Clock aria-hidden />
+        <span>時間</span>
+      </div>
+      <div className="inline-fields">
+        <label className="field">
+          <span>開始秒</span>
+          <input
+            key={`${clip.id}-start-${clip.startFrame}`}
+            min={0}
+            step={0.001}
+            type="number"
+            defaultValue={startSeconds.toFixed(3)}
+            onBlur={(event) => setSelectedStartFrame(secondsToFrames(Number(event.target.value), project.render.fps))}
+          />
+        </label>
+        <label className="field">
+          <span>長さ秒</span>
+          <input
+            key={`${clip.id}-duration-${clip.durationFrames}`}
+            min={0.001}
+            step={0.001}
+            type="number"
+            defaultValue={durationSeconds.toFixed(3)}
+            onBlur={(event) => setSelectedDurationFrames(secondsToFrames(Number(event.target.value), project.render.fps))}
+          />
+        </label>
+      </div>
       {"text" in clip ? (
         <>
           <label className="field">

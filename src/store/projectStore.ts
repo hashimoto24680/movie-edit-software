@@ -47,6 +47,8 @@ interface ProjectStore {
   updateSelectedText: (text: string) => void;
   updateSelectedTextStyle: (patch: Record<string, unknown>) => void;
   setSelectedVolume: (volume: number) => void;
+  setSelectedStartFrame: (startFrame: number) => void;
+  setSelectedDurationFrames: (durationFrames: number) => void;
   importAssetFiles: (files: ImportedAssetFile[]) => void;
   updateCanvasSize: (width: number, height: number) => void;
   moveClipOnTimeline: (clipId: string, targetTrackId: string, startFrame: number) => void;
@@ -308,6 +310,30 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   setSelectedVolume: (volume) => {
     const { selectedClipId } = get();
     get().commitCommands("Set volume", [{ type: "setVolume", clipId: selectedClipId, volume }], "gui");
+  },
+  setSelectedStartFrame: (startFrame) => {
+    const { selectedClipId } = get();
+    if (!Number.isFinite(startFrame)) {
+      set({ lastError: "開始位置には数値を入力してください。" });
+      return;
+    }
+    get().commitCommands(
+      "Set object start",
+      [{ type: "moveClip", clipId: selectedClipId, startFrame: Math.max(0, Math.round(startFrame)) }],
+      "gui"
+    );
+  },
+  setSelectedDurationFrames: (durationFrames) => {
+    const { selectedClipId } = get();
+    if (!Number.isFinite(durationFrames) || durationFrames <= 0) {
+      set({ lastError: "長さには0より大きい数値を入力してください。" });
+      return;
+    }
+    get().commitCommands(
+      "Set object duration",
+      [{ type: "trimClip", clipId: selectedClipId, durationFrames: Math.max(1, Math.round(durationFrames)) }],
+      "gui"
+    );
   },
   importAssetFiles: (files) => {
     const validFiles = files.filter((file) => file.name && file.path);

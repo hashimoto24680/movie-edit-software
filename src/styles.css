@@ -775,7 +775,8 @@ textarea {
 }
 
 select,
-input[type="color"] {
+input[type="color"],
+.field input[type="number"] {
   width: 100%;
   min-width: 0;
   border: 1px solid #303945;
@@ -784,7 +785,8 @@ input[type="color"] {
   background: #11161b;
 }
 
-select {
+select,
+.field input[type="number"] {
   min-height: 32px;
   padding: 0 8px;
 }

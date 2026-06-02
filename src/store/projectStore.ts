@@ -355,16 +355,29 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     if (removed) set({ selectedClipId: nextSelectedClipId, selectedClipIds: nextSelectedClipId ? [nextSelectedClipId] : [] });
   },
   rippleRemoveSelectedClip: () => {
-    const { project, selectedClipId } = get();
+    const { project, selectedClipId, selectedClipIds } = get();
     const clips = allClips(project);
-    if (!clips.some(({ clip }) => clip.id === selectedClipId)) {
+    const selectedLocations = selectedClipIds
+      .map((clipId) => clips.find(({ clip }) => clip.id === clipId))
+      .filter((located): located is NonNullable<typeof located> => Boolean(located));
+    const targetLocations = selectedLocations.length > 0 ? selectedLocations : clips.filter(({ clip }) => clip.id === selectedClipId);
+    if (targetLocations.length === 0) {
       set({ lastError: "リップル削除するオブジェクトを選択してください。" });
       return;
     }
-    const nextSelectedClipId = nextClipIdInSameTrack(project, selectedClipId);
+    const sortedTargets = [...targetLocations].sort((a, b) => {
+      const trackOrder = project.tracks.findIndex((track) => track.id === a.track.id) - project.tracks.findIndex((track) => track.id === b.track.id);
+      return trackOrder || a.clip.startFrame - b.clip.startFrame || a.clip.id.localeCompare(b.clip.id);
+    });
+    const targetIds = sortedTargets.map(({ clip }) => clip.id);
+    const selectedIndex = clips.findIndex(({ clip }) => clip.id === targetIds.at(-1));
+    const nextSelectedClipId =
+      clips.slice(selectedIndex + 1).find(({ clip }) => !targetIds.includes(clip.id))?.clip.id ??
+      [...clips.slice(0, selectedIndex)].reverse().find(({ clip }) => !targetIds.includes(clip.id))?.clip.id ??
+      "";
     const removed = get().commitCommands(
-      "Ripple remove timeline object",
-      [{ type: "rippleRemoveClip", clipId: selectedClipId }],
+      targetIds.length > 1 ? "Ripple remove selected timeline objects" : "Ripple remove timeline object",
+      targetIds.map((clipId) => ({ type: "rippleRemoveClip", clipId })),
       "gui"
     );
     if (removed) set({ selectedClipId: nextSelectedClipId, selectedClipIds: nextSelectedClipId ? [nextSelectedClipId] : [] });

@@ -567,6 +567,38 @@ describe("project core", () => {
     expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips).some((clip) => clip.id === "cap-1")).toBe(true);
   });
 
+  it("ripple-removes multiple selected timeline objects on the same layer", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipIds(["cap-1", "cap-2"]);
+
+    useProjectStore.getState().rippleRemoveSelectedClip();
+
+    let captionTrack = useProjectStore.getState().project.tracks.find((track) => track.id === "layer-3");
+    expect(captionTrack?.clips).toEqual([]);
+    expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
+
+    useProjectStore.getState().undo();
+    captionTrack = useProjectStore.getState().project.tracks.find((track) => track.id === "layer-3");
+    expect(captionTrack?.clips.some((clip) => clip.id === "cap-1")).toBe(true);
+    expect(captionTrack?.clips.some((clip) => clip.id === "cap-2")).toBe(true);
+  });
+
+  it("ripple-removes multiple selected timeline objects across layers independently", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipIds(["cap-1", "clip-talk-1"]);
+
+    useProjectStore.getState().rippleRemoveSelectedClip();
+
+    const project = useProjectStore.getState().project;
+    const captionTrack = project.tracks.find((track) => track.id === "layer-3");
+    const videoTrack = project.tracks.find((track) => track.id === "layer-1");
+    expect(captionTrack?.clips.some((clip) => clip.id === "cap-1")).toBe(false);
+    expect(captionTrack?.clips.find((clip) => clip.id === "cap-2")?.startFrame).toBe(72);
+    expect(videoTrack?.clips.some((clip) => clip.id === "clip-talk-1")).toBe(false);
+    expect(videoTrack?.clips.find((clip) => clip.id === "clip-talk-2")?.startFrame).toBe(0);
+    expect(validateProject(project).ok).toBe(true);
+  });
+
   it("reports an error when ripple removing without a selected object", () => {
     useProjectStore.getState().resetSample();
     useProjectStore.getState().setSelectedClipId("");

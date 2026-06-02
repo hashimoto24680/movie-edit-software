@@ -96,6 +96,13 @@ export const validateProject = (project: unknown): ValidationResult => {
           }
         }
       }
+
+      if (
+        clip.type === "composition" &&
+        !ast.compositions.some((composition) => composition.id === clip.compositionId)
+      ) {
+        errors.push(`Composition clip "${clip.id}" references missing composition "${clip.compositionId}".`);
+      }
     }
 
     const sortedClips = [...track.clips].sort((a, b) => a.startFrame - b.startFrame);

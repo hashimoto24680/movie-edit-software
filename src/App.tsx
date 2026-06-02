@@ -262,7 +262,7 @@ function AssetBin() {
             kind: assetKindFromFileName(file.name)
           }));
           importAssetFiles(files);
-          event.currentTarget.value = "";
+          event.target.value = "";
         }}
       />
       <div className="asset-list">
@@ -967,7 +967,7 @@ function Inspector() {
             min={0}
             max={2}
             step={0.01}
-            defaultValue={volume}
+            value={volume}
             onChange={(event) => setSelectedVolume(Number(event.target.value))}
           />
         </label>
@@ -1131,10 +1131,11 @@ function ProjectPanel() {
         accept=".mesproj"
         hidden
         onChange={async (event) => {
-          const file = event.target.files?.[0];
+          const input = event.currentTarget;
+          const file = input.files?.[0];
           if (!file) return;
           loadProjectFileText(await file.text());
-          event.currentTarget.value = "";
+          input.value = "";
         }}
       />
       <div className="project-actions">

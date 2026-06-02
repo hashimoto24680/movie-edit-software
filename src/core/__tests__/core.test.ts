@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { applyCommandsChecked } from "../commands";
 import { emptyEffect } from "../defaults";
 import { parseLlmResponseText } from "../llm";
@@ -7,8 +7,13 @@ import { ffmpegRenderer } from "../renderers/ffmpeg";
 import { sampleProject } from "../sampleProject";
 import { parseProjectFileJson, parseProjectJson, serializeProject, serializeProjectFile } from "../serializer";
 import { validateProject } from "../validation";
+import { useProjectStore } from "../../store/projectStore";
 
 describe("project core", () => {
+  afterEach(() => {
+    useProjectStore.getState().resetSample();
+  });
+
   it("migrates a legacy project into the current schema", () => {
     const migrated = migrateProject({
       id: "legacy",
@@ -121,6 +126,81 @@ describe("project core", () => {
         { type: "moveClip", clipId: "clip-bgm-1", targetTrackId: "layer-1", startFrame: 15 }
       ])
     ).toThrow(/overlapping objects/);
+  });
+
+  it("rejects composition clips that reference missing compositions", () => {
+    const project = structuredClone(sampleProject);
+    project.tracks[4].clips.push({
+      id: "comp-missing",
+      type: "composition",
+      name: "Missing nested comp",
+      compositionId: "missing-composition",
+      startFrame: 0,
+      durationFrames: 30,
+      transform: sampleProject.tracks[0].clips[0].transform,
+      effects: [],
+      meta: {}
+    });
+
+    const validation = validateProject(project);
+
+    expect(validation.ok).toBe(false);
+    expect(validation.errors.some((error) => error.includes("missing composition"))).toBe(true);
+  });
+
+  it("reports an error instead of throwing when imported media has no free layer", () => {
+    const blockedProject = structuredClone(sampleProject);
+    const baseClip = blockedProject.tracks[0].clips[0];
+    blockedProject.tracks = blockedProject.tracks.map((track, index) => ({
+      ...track,
+      clips: [
+        {
+          ...structuredClone(baseClip),
+          id: `cover-${index}`,
+          name: `Cover ${index}`,
+          startFrame: 0,
+          durationFrames: 300,
+          sourceInFrame: 0,
+          sourceDurationFrames: 300
+        }
+      ]
+    }));
+    useProjectStore.getState().loadProjectFileText(serializeProjectFile(blockedProject));
+    useProjectStore.getState().setPlayheadFrame(0);
+
+    expect(() =>
+      useProjectStore.getState().importAssetFiles([{ name: "new.mp4", path: "new.mp4", kind: "video" }])
+    ).not.toThrow();
+
+    expect(useProjectStore.getState().lastError).toContain("空きレイヤー");
+    expect(useProjectStore.getState().project.assets.some((asset) => asset.name === "new.mp4")).toBe(false);
+  });
+
+  it("reports an error instead of throwing when new text has no free layer", () => {
+    const blockedProject = structuredClone(sampleProject);
+    const baseClip = blockedProject.tracks[0].clips[0];
+    blockedProject.tracks = blockedProject.tracks.map((track, index) => ({
+      ...track,
+      clips: [
+        {
+          ...structuredClone(baseClip),
+          id: `text-cover-${index}`,
+          name: `Text Cover ${index}`,
+          startFrame: 0,
+          durationFrames: 300,
+          sourceInFrame: 0,
+          sourceDurationFrames: 300
+        }
+      ]
+    }));
+    useProjectStore.getState().loadProjectFileText(serializeProjectFile(blockedProject));
+    useProjectStore.getState().setPlayheadFrame(0);
+    const clipCountBefore = useProjectStore.getState().project.tracks.flatMap((track) => track.clips).length;
+
+    expect(() => useProjectStore.getState().addTextAtPlayhead()).not.toThrow();
+
+    expect(useProjectStore.getState().lastError).toContain("空きレイヤー");
+    expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips).length).toBe(clipCountBefore);
   });
 
   it("runs GUI and LLM operations through the same reducer contract", () => {

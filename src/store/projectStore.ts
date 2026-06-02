@@ -94,13 +94,13 @@ const trackForNewObject = (
   kind: Track["kind"],
   startFrame: number,
   durationFrames: number
-): Track => {
+): Track | undefined => {
   const candidates = [
     ...project.tracks.filter((track) => track.kind === kind),
     ...project.tracks.filter((track) => track.kind === "layer"),
     ...project.tracks
   ];
-  return candidates.find((track) => !track.locked && clipFitsTrack(track, startFrame, durationFrames)) ?? candidates[0] ?? project.tracks[0];
+  return candidates.find((track) => !track.locked && clipFitsTrack(track, startFrame, durationFrames));
 };
 
 const safeIdPart = (value: string): string =>
@@ -191,6 +191,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     const id = `text-${Date.now()}`;
     const durationFrames = secondsToFrames(3, project.render.fps);
     const track = trackForNewObject(project, "overlay", playheadFrame, durationFrames);
+    if (!track) {
+      set({ lastError: "テキストを置ける空きレイヤーがありません。" });
+      return;
+    }
     const added = get().commitCommands(
       "Add text",
       [
@@ -293,6 +297,12 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       };
       const startFrame = baseFrame;
       const track = trackForNewObject(draft, "layer", startFrame, durationFrames);
+      if (!track) {
+        set({
+          lastError: `素材 "${file.name}" を置ける空きレイヤーがありません。再生ヘッドを空き時間へ移動するか、既存オブジェクトをずらしてください。`
+        });
+        return;
+      }
       const clipId = `clip-${idPart}-${batchId}-${index}`;
       const clip: ProjectCommand = {
         type: "addClip",
@@ -315,7 +325,12 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const importCommand: ProjectCommand = { type: "importAsset", asset };
       commands.push(importCommand, clip);
       createdClipIds.push(clipId);
-      draft = applyCommandsChecked(draft, [importCommand, clip]).project;
+      try {
+        draft = applyCommandsChecked(draft, [importCommand, clip]).project;
+      } catch (error) {
+        set({ lastError: error instanceof Error ? error.message : String(error) });
+        return;
+      }
     }
 
     const added = get().commitCommands(`Import ${validFiles.length} asset${validFiles.length > 1 ? "s" : ""}`, commands, "gui");

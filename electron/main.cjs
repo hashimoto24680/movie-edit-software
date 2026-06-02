@@ -105,7 +105,7 @@ ipcMain.handle("video:export", async (_event, payload) => {
   const commandPath = `${result.filePath}.ffmpeg.cmd`;
   const commandPreview = String(manifest.commandPreview ?? "").replace(
     /"[^"]*movie-edit-output\.mp4"|"outputs\/sample-short\.mp4"/,
-    `"${result.filePath}"`
+    () => `"${result.filePath}"`
   );
 
   await fs.writeFile(

@@ -72,6 +72,7 @@ interface ProjectStore {
   nudgeSelectedClips: (deltaFrames: number) => void;
   moveSelectedClipLayer: (direction: "up" | "down") => void;
   moveSelectedClipToPlayhead: () => void;
+  moveSelectedClipToAdjacentBoundary: (direction: "previous" | "next") => void;
   jumpPlayheadToSelectedBoundary: (boundary: "start" | "end") => void;
   jumpPlayheadToTimelineBoundary: (direction: "previous" | "next") => void;
   centerSelectedOnCanvas: () => void;
@@ -846,6 +847,35 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     get().commitCommands(
       "Move object to playhead",
       [{ type: "moveClip", clipId: selectedClipId, targetTrackId: located.track.id, startFrame: Math.max(0, playheadFrame) }],
+      "gui"
+    );
+  },
+  moveSelectedClipToAdjacentBoundary: (direction) => {
+    const { project, selectedClipId } = get();
+    const track = project.tracks.find((candidate) => candidate.clips.some((clip) => clip.id === selectedClipId));
+    const selected = track?.clips.find((clip) => clip.id === selectedClipId);
+    if (!track || !selected) {
+      set({ lastError: "境界へ移動するオブジェクトを選択してください。" });
+      return;
+    }
+    const sortedClips = [...track.clips].sort((a, b) => a.startFrame - b.startFrame);
+    const selectedIndex = sortedClips.findIndex((clip) => clip.id === selected.id);
+    const adjacentClip = direction === "previous" ? sortedClips[selectedIndex - 1] : sortedClips[selectedIndex + 1];
+    if (!adjacentClip) {
+      set({ lastError: direction === "previous" ? "前に揃えるオブジェクトがありません。" : "次に揃えるオブジェクトがありません。" });
+      return;
+    }
+    const startFrame =
+      direction === "previous"
+        ? adjacentClip.startFrame + adjacentClip.durationFrames
+        : Math.max(0, adjacentClip.startFrame - selected.durationFrames);
+    if (startFrame === selected.startFrame) {
+      set({ lastError: "すでに隣の境界に揃っています。" });
+      return;
+    }
+    get().commitCommands(
+      direction === "previous" ? "Move object to previous adjacent boundary" : "Move object to next adjacent boundary",
+      [{ type: "moveClip", clipId: selectedClipId, targetTrackId: track.id, startFrame }],
       "gui"
     );
   },

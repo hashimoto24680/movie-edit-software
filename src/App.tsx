@@ -330,6 +330,7 @@ function Preview() {
   const alignSelectedVertically = useProjectStore((state) => state.alignSelectedVertically);
   const moveSelectedClipLayer = useProjectStore((state) => state.moveSelectedClipLayer);
   const moveSelectedClipToPlayhead = useProjectStore((state) => state.moveSelectedClipToPlayhead);
+  const moveSelectedClipToAdjacentBoundary = useProjectStore((state) => state.moveSelectedClipToAdjacentBoundary);
   const jumpPlayheadToSelectedBoundary = useProjectStore((state) => state.jumpPlayheadToSelectedBoundary);
   const jumpPlayheadToTimelineBoundary = useProjectStore((state) => state.jumpPlayheadToTimelineBoundary);
   const activeClips = activeCanvasClips(project, playheadFrame);
@@ -481,6 +482,12 @@ function Preview() {
           </button>
           <button className="icon-button" title="選択オブジェクトを再生ヘッドへ移動" onClick={moveSelectedClipToPlayhead}>
             <Clock aria-hidden />
+          </button>
+          <button className="icon-button" title="前のオブジェクト境界へ寄せる" onClick={() => moveSelectedClipToAdjacentBoundary("previous")}>
+            <MoveLeft aria-hidden />
+          </button>
+          <button className="icon-button" title="次のオブジェクト境界へ寄せる" onClick={() => moveSelectedClipToAdjacentBoundary("next")}>
+            <MoveRight aria-hidden />
           </button>
           <button className="icon-button" title="選択オブジェクトの開始へ移動 ([)" onClick={() => jumpPlayheadToSelectedBoundary("start")}>
             <SkipBack aria-hidden />

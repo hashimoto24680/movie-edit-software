@@ -952,6 +952,41 @@ describe("project core", () => {
     expect(clip?.startFrame).toBe(36);
   });
 
+  it("moves the selected object to adjacent object boundaries on the same layer", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().moveClipOnTimeline("cap-2", "layer-3", 130);
+    useProjectStore.getState().setSelectedClipId("cap-1");
+
+    useProjectStore.getState().moveSelectedClipToAdjacentBoundary("next");
+
+    let layer3 = useProjectStore.getState().project.tracks.find((track) => track.id === "layer-3");
+    expect(layer3?.clips.find((clip) => clip.id === "cap-1")?.startFrame).toBe(64);
+
+    useProjectStore.getState().undo();
+    layer3 = useProjectStore.getState().project.tracks.find((track) => track.id === "layer-3");
+    expect(layer3?.clips.find((clip) => clip.id === "cap-1")?.startFrame).toBe(36);
+
+    useProjectStore.getState().setSelectedClipId("cap-2");
+    useProjectStore.getState().moveSelectedClipToAdjacentBoundary("previous");
+
+    layer3 = useProjectStore.getState().project.tracks.find((track) => track.id === "layer-3");
+    expect(layer3?.clips.find((clip) => clip.id === "cap-2")?.startFrame).toBe(102);
+  });
+
+  it("reports errors when selected object cannot move to an adjacent object boundary", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("");
+
+    useProjectStore.getState().moveSelectedClipToAdjacentBoundary("next");
+
+    expect(useProjectStore.getState().lastError).toContain("境界");
+
+    useProjectStore.getState().setSelectedClipId("title-hero");
+    useProjectStore.getState().moveSelectedClipToAdjacentBoundary("next");
+
+    expect(useProjectStore.getState().lastError).toContain("次に揃える");
+  });
+
   it("jumps the playhead to the selected object boundaries", () => {
     useProjectStore.getState().resetSample();
     useProjectStore.getState().setSelectedClipId("cap-1");

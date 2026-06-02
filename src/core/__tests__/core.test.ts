@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { applyCommandsChecked } from "../commands";
+import { alignHorizontalPosition, alignVerticalPosition } from "../canvasAlign";
 import { calculateCanvasFitScale, centerPosition } from "../canvasFit";
 import { emptyEffect } from "../defaults";
 import { resolveKeyboardShortcut } from "../keyboardShortcuts";
@@ -88,6 +89,15 @@ describe("project core", () => {
       100 / (72 * ((1080 / 1920) / (1920 / 1080)))
     );
     expect(calculateCanvasFitScale("height", "text", { width: 1080, height: 1920 }).x).toBeCloseTo(100 / 78);
+  });
+
+  it("calculates canvas alignment positions", () => {
+    expect(alignHorizontalPosition({ x: 0.3, y: 0.4 }, "left")).toEqual({ x: 0, y: 0.4 });
+    expect(alignHorizontalPosition({ x: 0.3, y: 0.4 }, "center")).toEqual({ x: 0.5, y: 0.4 });
+    expect(alignHorizontalPosition({ x: 0.3, y: 0.4 }, "right")).toEqual({ x: 1, y: 0.4 });
+    expect(alignVerticalPosition({ x: 0.3, y: 0.4 }, "top")).toEqual({ x: 0.3, y: 0 });
+    expect(alignVerticalPosition({ x: 0.3, y: 0.4 }, "middle")).toEqual({ x: 0.3, y: 0.5 });
+    expect(alignVerticalPosition({ x: 0.3, y: 0.4 }, "bottom")).toEqual({ x: 0.3, y: 1 });
   });
 
   it("keeps keyframed properties in the same schema path as static values", () => {
@@ -564,6 +574,33 @@ describe("project core", () => {
       .project.tracks.flatMap((track) => track.clips)
       .find((candidate) => candidate.id === "clip-talk-1");
     expect(clip && "transform" in clip && clip.transform.scale.mode === "static" ? clip.transform.scale.value.x : null).toBe(1);
+  });
+
+  it("aligns the selected object through the store", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("clip-talk-1");
+
+    useProjectStore.getState().alignSelectedHorizontally("right");
+    useProjectStore.getState().alignSelectedVertically("top");
+
+    let clip = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips)
+      .find((candidate) => candidate.id === "clip-talk-1");
+    expect(clip && "transform" in clip && clip.transform.position.mode === "static" ? clip.transform.position.value : null).toEqual({
+      x: 1,
+      y: 0
+    });
+
+    useProjectStore.getState().undo();
+    clip = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips)
+      .find((candidate) => candidate.id === "clip-talk-1");
+    expect(clip && "transform" in clip && clip.transform.position.mode === "static" ? clip.transform.position.value : null).toEqual({
+      x: 1,
+      y: 0.5
+    });
   });
 
   it("toggles layer lock, mute, and solo through the store history", () => {

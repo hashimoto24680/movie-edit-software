@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { applyCommandsChecked } from "../core/commands";
+import { alignHorizontalPosition, alignVerticalPosition, type HorizontalAlign, type VerticalAlign } from "../core/canvasAlign";
 import { calculateCanvasFitScale, centerPosition, type CanvasFitMode } from "../core/canvasFit";
 import { defaultAudio, defaultTransform, emptyEffect, staticNumber, staticPoint } from "../core/defaults";
 import { createHistory, currentProjectFromHistory, redoHistory, undoHistory, commitHistory, type HistoryState } from "../core/history";
@@ -60,6 +61,8 @@ interface ProjectStore {
   moveClipOnTimeline: (clipId: string, targetTrackId: string, startFrame: number) => void;
   centerSelectedOnCanvas: () => void;
   fitSelectedToCanvas: (mode: CanvasFitMode) => void;
+  alignSelectedHorizontally: (align: HorizontalAlign) => void;
+  alignSelectedVertically: (align: VerticalAlign) => void;
   updateSelectedTransform: (patch: {
     position?: Point2D;
     scale?: Point2D;
@@ -143,6 +146,12 @@ const safeIdPart = (value: string): string =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 28) || "asset";
+
+const selectedStaticPosition = (project: ProjectAst, selectedClipId: string): Point2D | null => {
+  const selected = allClips(project).find(({ clip }) => clip.id === selectedClipId)?.clip;
+  if (!selected || !("transform" in selected)) return null;
+  return selected.transform.position.mode === "static" ? selected.transform.position.value : { x: 0.5, y: 0.5 };
+};
 
 export const useProjectStore = create<ProjectStore>((set, get) => ({
   project: sampleProject,
@@ -529,6 +538,32 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     get().commitCommands(
       mode === "width" ? "Fit selected object to width" : "Fit selected object to height",
       [{ type: "updateClipTransform", clipId: selectedClipId, position: centerPosition(), scale }],
+      "gui"
+    );
+  },
+  alignSelectedHorizontally: (align) => {
+    const { project, selectedClipId } = get();
+    const position = selectedStaticPosition(project, selectedClipId);
+    if (!position) {
+      set({ lastError: "整列するオブジェクトを選択してください。" });
+      return;
+    }
+    get().commitCommands(
+      `Align selected object ${align}`,
+      [{ type: "updateClipTransform", clipId: selectedClipId, position: alignHorizontalPosition(position, align) }],
+      "gui"
+    );
+  },
+  alignSelectedVertically: (align) => {
+    const { project, selectedClipId } = get();
+    const position = selectedStaticPosition(project, selectedClipId);
+    if (!position) {
+      set({ lastError: "整列するオブジェクトを選択してください。" });
+      return;
+    }
+    get().commitCommands(
+      `Align selected object ${align}`,
+      [{ type: "updateClipTransform", clipId: selectedClipId, position: alignVerticalPosition(position, align) }],
       "gui"
     );
   },

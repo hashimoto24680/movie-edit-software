@@ -9,6 +9,10 @@ import {
   History,
   Layers,
   Lock,
+  MoveDown,
+  MoveLeft,
+  MoveRight,
+  MoveUp,
   Maximize2,
   Monitor,
   PanelRight,
@@ -318,6 +322,8 @@ function Preview() {
   const updateSelectedTransform = useProjectStore((state) => state.updateSelectedTransform);
   const centerSelectedOnCanvas = useProjectStore((state) => state.centerSelectedOnCanvas);
   const fitSelectedToCanvas = useProjectStore((state) => state.fitSelectedToCanvas);
+  const alignSelectedHorizontally = useProjectStore((state) => state.alignSelectedHorizontally);
+  const alignSelectedVertically = useProjectStore((state) => state.alignSelectedVertically);
   const activeClips = activeCanvasClips(project, playheadFrame);
   const frameRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{
@@ -470,6 +476,18 @@ function Preview() {
           </button>
           <button className="icon-button" title="キャンバス高さに合わせる" onClick={() => fitSelectedToCanvas("height")}>
             <Maximize2 aria-hidden />
+          </button>
+          <button className="icon-button" title="左へ整列" onClick={() => alignSelectedHorizontally("left")}>
+            <MoveLeft aria-hidden />
+          </button>
+          <button className="icon-button" title="右へ整列" onClick={() => alignSelectedHorizontally("right")}>
+            <MoveRight aria-hidden />
+          </button>
+          <button className="icon-button" title="上へ整列" onClick={() => alignSelectedVertically("top")}>
+            <MoveUp aria-hidden />
+          </button>
+          <button className="icon-button" title="下へ整列" onClick={() => alignSelectedVertically("bottom")}>
+            <MoveDown aria-hidden />
           </button>
         </div>
       </div>

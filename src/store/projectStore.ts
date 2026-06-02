@@ -64,6 +64,7 @@ interface ProjectStore {
   toggleTrackMuted: (trackId: string) => void;
   toggleTrackSolo: (trackId: string) => void;
   moveClipOnTimeline: (clipId: string, targetTrackId: string, startFrame: number) => void;
+  moveSelectedClipsOnTimeline: (anchorClipId: string, targetTrackId: string, startFrame: number) => void;
   trimClipOnTimeline: (clipId: string, edge: "start" | "end", boundaryFrame: number) => void;
   nudgeSelectedClips: (deltaFrames: number) => void;
   moveSelectedClipLayer: (direction: "up" | "down") => void;
@@ -570,6 +571,50 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     get().commitCommands(
       "Move timeline object",
       [{ type: "moveClip", clipId, targetTrackId, startFrame: nextStartFrame }],
+      "gui"
+    );
+  },
+  moveSelectedClipsOnTimeline: (anchorClipId, targetTrackId, startFrame) => {
+    const { project, selectedClipIds } = get();
+    const clips = allClips(project);
+    const anchor = clips.find(({ clip }) => clip.id === anchorClipId);
+    if (!anchor) {
+      set({ lastError: "移動するオブジェクトを選択してください。" });
+      return;
+    }
+    const targetTrackIndex = project.tracks.findIndex((track) => track.id === targetTrackId);
+    const anchorTrackIndex = project.tracks.findIndex((track) => track.id === anchor.track.id);
+    if (targetTrackIndex < 0) {
+      set({ lastError: "移動先レイヤーが見つかりません。" });
+      return;
+    }
+    if (anchorTrackIndex < 0) {
+      set({ lastError: "移動元レイヤーが見つかりません。" });
+      return;
+    }
+    const groupIds = selectedClipIds.includes(anchorClipId) && selectedClipIds.length > 1 ? selectedClipIds : [anchorClipId];
+    const deltaFrames = Math.max(0, Math.round(startFrame)) - anchor.clip.startFrame;
+    const deltaTrackIndex = targetTrackIndex - anchorTrackIndex;
+    const commands: ProjectCommand[] = [];
+    for (const clipId of groupIds) {
+      const located = clips.find(({ clip }) => clip.id === clipId);
+      if (!located) continue;
+      const nextStartFrame = located.clip.startFrame + deltaFrames;
+      const locatedTrackIndex = project.tracks.findIndex((track) => track.id === located.track.id);
+      const nextTrack = project.tracks[locatedTrackIndex + deltaTrackIndex];
+      if (nextStartFrame < 0) {
+        set({ lastError: "これ以上左へ移動できません。" });
+        return;
+      }
+      if (!nextTrack) {
+        set({ lastError: "選択グループを移動できるレイヤー範囲がありません。" });
+        return;
+      }
+      commands.push({ type: "moveClip", clipId, targetTrackId: nextTrack.id, startFrame: nextStartFrame });
+    }
+    get().commitCommands(
+      groupIds.length > 1 ? "Move selected timeline objects" : "Move timeline object",
+      commands,
       "gui"
     );
   },

@@ -719,6 +719,7 @@ function Timeline() {
   const setSelectedClipIds = useProjectStore((state) => state.setSelectedClipIds);
   const toggleSelectedClipId = useProjectStore((state) => state.toggleSelectedClipId);
   const moveClipOnTimeline = useProjectStore((state) => state.moveClipOnTimeline);
+  const moveSelectedClipsOnTimeline = useProjectStore((state) => state.moveSelectedClipsOnTimeline);
   const trimClipOnTimeline = useProjectStore((state) => state.trimClipOnTimeline);
   const selectTimelineFrame = useProjectStore((state) => state.selectTimelineFrame);
   const toggleTrackLocked = useProjectStore((state) => state.toggleTrackLocked);
@@ -735,8 +736,10 @@ function Timeline() {
     sourceTrackId: string;
     targetTrackId: string;
     frame: number;
+    anchorStartFrame: number;
     offsetFrames: number;
     durationFrames: number;
+    groupClipIds: string[];
     snapGuideFrame: number | null;
   } | null>(null);
   const [timelineTrim, setTimelineTrim] = useState<{
@@ -952,11 +955,19 @@ function Timeline() {
           snapThresholdFrames
         )
       : { frame: timelineDrag.frame, guideFrame: timelineDrag.snapGuideFrame };
-    moveClipOnTimeline(
-      timelineDrag.clipId,
-      target?.trackId ?? timelineDrag.targetTrackId,
-      snapped.frame
-    );
+    if (timelineDrag.groupClipIds.length > 1) {
+      moveSelectedClipsOnTimeline(
+        timelineDrag.clipId,
+        target?.trackId ?? timelineDrag.targetTrackId,
+        snapped.frame
+      );
+    } else {
+      moveClipOnTimeline(
+        timelineDrag.clipId,
+        target?.trackId ?? timelineDrag.targetTrackId,
+        snapped.frame
+      );
+    }
     setTimelineDrag(null);
   };
 
@@ -1125,9 +1136,14 @@ function Timeline() {
               >
                 {track.clips.map((clip) => {
                   const isDragging = timelineDrag?.clipId === clip.id;
+                  const isGroupDragging = Boolean(timelineDrag?.groupClipIds.includes(clip.id));
                   const draggedHere = isDragging && timelineDrag.targetTrackId === track.id;
                   const isTrimming = timelineTrim?.clipId === clip.id;
-                  const displayFrame = isDragging ? timelineDrag.frame : isTrimming ? timelineTrim.startFrame : clip.startFrame;
+                  const groupDragFrame =
+                    timelineDrag && isGroupDragging
+                      ? clip.startFrame + (timelineDrag.frame - timelineDrag.anchorStartFrame)
+                      : clip.startFrame;
+                  const displayFrame = isGroupDragging ? groupDragFrame : isTrimming ? timelineTrim.startFrame : clip.startFrame;
                   const left = frameToPercent(displayFrame);
                   const displayDuration = isTrimming ? timelineTrim.durationFrames : clip.durationFrames;
                   const width = Math.max(0.15, (displayDuration / timelineFrameRange) * 100);
@@ -1159,14 +1175,19 @@ function Timeline() {
                         const offsetFrames = clamp(pointerFrame - clip.startFrame, 0, clip.durationFrames);
                         hideNativeDragImage(event.dataTransfer);
                         event.dataTransfer.effectAllowed = "move";
-                        setSelectedClipId(clip.id);
+                        const groupClipIds = selectedClipIds.includes(clip.id) && selectedClipIds.length > 1 ? selectedClipIds : [clip.id];
+                        if (!selectedClipIds.includes(clip.id)) {
+                          setSelectedClipId(clip.id);
+                        }
                         setTimelineDrag({
                           clipId: clip.id,
                           sourceTrackId: track.id,
                           targetTrackId: track.id,
                           frame: clip.startFrame,
+                          anchorStartFrame: clip.startFrame,
                           offsetFrames,
                           durationFrames: clip.durationFrames,
+                          groupClipIds,
                           snapGuideFrame: null
                         });
                         event.dataTransfer.setData(
@@ -1230,8 +1251,13 @@ function Timeline() {
                   )
                   .map((clip) => {
                     const isDragging = timelineDrag?.clipId === clip.id;
+                    const isGroupDragging = Boolean(timelineDrag?.groupClipIds.includes(clip.id));
                     const isTrimming = timelineTrim?.clipId === clip.id;
-                    const displayFrame = isDragging ? timelineDrag.frame : isTrimming ? timelineTrim.startFrame : clip.startFrame;
+                    const groupDragFrame =
+                      timelineDrag && isGroupDragging
+                        ? clip.startFrame + (timelineDrag.frame - timelineDrag.anchorStartFrame)
+                        : clip.startFrame;
+                    const displayFrame = isGroupDragging ? groupDragFrame : isTrimming ? timelineTrim.startFrame : clip.startFrame;
                     const left = frameToPercent(displayFrame);
                     const displayDuration = isTrimming ? timelineTrim.durationFrames : clip.durationFrames;
                     const width = Math.max(0.15, (displayDuration / timelineFrameRange) * 100);

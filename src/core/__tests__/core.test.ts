@@ -464,6 +464,36 @@ describe("project core", () => {
     expect(useProjectStore.getState().lastError).toContain("左");
   });
 
+  it("moves selected timeline objects as a group from an anchor object", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipIds(["title-hero", "cap-1"]);
+
+    useProjectStore.getState().moveSelectedClipsOnTimeline("cap-1", "layer-3", 66);
+
+    let clips = useProjectStore.getState().project.tracks.flatMap((track) => track.clips);
+    expect(clips.find((clip) => clip.id === "cap-1")?.startFrame).toBe(66);
+    expect(clips.find((clip) => clip.id === "title-hero")?.startFrame).toBe(30);
+    expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
+
+    useProjectStore.getState().undo();
+    clips = useProjectStore.getState().project.tracks.flatMap((track) => track.clips);
+    expect(clips.find((clip) => clip.id === "cap-1")?.startFrame).toBe(36);
+    expect(clips.find((clip) => clip.id === "title-hero")?.startFrame).toBe(0);
+  });
+
+  it("moves selected timeline objects across layers while preserving relative layer offsets", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().commitCommands("Prepare empty lower layers", [{ type: "removeClip", clipId: "clip-bgm-1" }], "gui");
+    useProjectStore.getState().setSelectedClipIds(["title-hero", "cap-1"]);
+
+    useProjectStore.getState().moveSelectedClipsOnTimeline("title-hero", "layer-4", 30);
+
+    const project = useProjectStore.getState().project;
+    expect(project.tracks.find((track) => track.id === "layer-4")?.clips.some((clip) => clip.id === "title-hero")).toBe(true);
+    expect(project.tracks.find((track) => track.id === "layer-5")?.clips.some((clip) => clip.id === "cap-1")).toBe(true);
+    expect(validateProject(project).ok).toBe(true);
+  });
+
   it("ripple-removes a clip and closes the gap on the same layer", () => {
     const { project } = applyCommandsChecked(sampleProject, [{ type: "rippleRemoveClip", clipId: "cap-1" }]);
     const captionTrack = project.tracks.find((track) => track.id === "layer-3");

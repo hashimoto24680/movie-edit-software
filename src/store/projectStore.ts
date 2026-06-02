@@ -44,6 +44,7 @@ interface ProjectStore {
   splitSelectedClipAtPlayhead: () => void;
   removeSelectedClip: () => void;
   rippleRemoveSelectedClip: () => void;
+  duplicateSelectedClip: () => void;
   addUnsupportedEffectToSelected: () => void;
   updateSelectedText: (text: string) => void;
   updateSelectedTextStyle: (patch: Record<string, unknown>) => void;
@@ -103,6 +104,19 @@ const nextClipIdInSameTrack = (project: ProjectAst, clipId: string): string => {
 const clipFitsTrack = (track: Track, startFrame: number, durationFrames: number): boolean => {
   const endFrame = startFrame + durationFrames;
   return track.clips.every((clip) => endFrame <= clip.startFrame || startFrame >= clip.startFrame + clip.durationFrames);
+};
+
+const nextFreeStartFrame = (track: Track, desiredStartFrame: number, durationFrames: number, excludedClipId: string): number => {
+  const otherClips = track.clips.filter((clip) => clip.id !== excludedClipId).sort((a, b) => a.startFrame - b.startFrame);
+  let startFrame = Math.max(0, desiredStartFrame);
+  for (const clip of otherClips) {
+    const endFrame = startFrame + durationFrames;
+    if (endFrame <= clip.startFrame) return startFrame;
+    if (startFrame < clip.startFrame + clip.durationFrames) {
+      startFrame = clip.startFrame + clip.durationFrames;
+    }
+  }
+  return startFrame;
 };
 
 const trackForNewObject = (
@@ -286,6 +300,37 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       "gui"
     );
     if (removed) set({ selectedClipId: nextSelectedClipId });
+  },
+  duplicateSelectedClip: () => {
+    const { project, selectedClipId } = get();
+    const located = allClips(project).find(({ clip }) => clip.id === selectedClipId);
+    if (!located) {
+      set({ lastError: "複製するオブジェクトを選択してください。" });
+      return;
+    }
+    if (located.track.locked) {
+      set({ lastError: "ロック中のレイヤーでは複製できません。" });
+      return;
+    }
+    const duplicateId = `${located.clip.id}-copy-${Date.now()}`;
+    const startFrame = nextFreeStartFrame(
+      located.track,
+      located.clip.startFrame + located.clip.durationFrames,
+      located.clip.durationFrames,
+      located.clip.id
+    );
+    const clip = {
+      ...structuredClone(located.clip),
+      id: duplicateId,
+      name: `${located.clip.name} copy`,
+      startFrame
+    };
+    const added = get().commitCommands(
+      "Duplicate timeline object",
+      [{ type: "addClip", trackId: located.track.id, clip }],
+      "gui"
+    );
+    if (added) set({ selectedClipId: duplicateId });
   },
   addUnsupportedEffectToSelected: () => {
     const { selectedClipId } = get();

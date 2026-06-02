@@ -1,6 +1,7 @@
 import {
   ChevronsLeft,
   Clock,
+  Copy,
   Download,
   FileVideo,
   Film,
@@ -298,6 +299,7 @@ function Preview() {
   const playheadFrame = useProjectStore((state) => state.playheadFrame);
   const addTextAtPlayhead = useProjectStore((state) => state.addTextAtPlayhead);
   const splitSelectedClipAtPlayhead = useProjectStore((state) => state.splitSelectedClipAtPlayhead);
+  const duplicateSelectedClip = useProjectStore((state) => state.duplicateSelectedClip);
   const removeSelectedClip = useProjectStore((state) => state.removeSelectedClip);
   const rippleRemoveSelectedClip = useProjectStore((state) => state.rippleRemoveSelectedClip);
   const selectedClipId = useProjectStore((state) => state.selectedClipId);
@@ -357,6 +359,9 @@ function Preview() {
           <button className="tool-button" onClick={splitSelectedClipAtPlayhead}>
             <Scissors aria-hidden />
             分割
+          </button>
+          <button className="icon-button" title="選択オブジェクトを複製" onClick={duplicateSelectedClip}>
+            <Copy aria-hidden />
           </button>
           <button className="icon-button" title="選択オブジェクトを削除" onClick={removeSelectedClip}>
             <Trash2 aria-hidden />

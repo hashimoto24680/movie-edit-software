@@ -368,6 +368,41 @@ describe("project core", () => {
     expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips).length).toBe(clipCountBefore);
   });
 
+  it("duplicates the selected timeline object into the next free slot", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("clip-talk-1");
+
+    useProjectStore.getState().duplicateSelectedClip();
+
+    const layer1 = useProjectStore.getState().project.tracks.find((track) => track.id === "layer-1");
+    const duplicate = layer1?.clips.find((clip) => clip.id === useProjectStore.getState().selectedClipId);
+    expect(duplicate?.id).toContain("clip-talk-1-copy-");
+    expect(duplicate?.name).toBe("Talk intro copy");
+    expect(duplicate?.startFrame).toBe(480);
+    expect(duplicate?.durationFrames).toBe(240);
+    expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
+
+    useProjectStore.getState().undo();
+    expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips).some((clip) => clip.id === duplicate?.id)).toBe(false);
+  });
+
+  it("reports errors when duplicating without a selection or on a locked layer", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("");
+    const clipCountBefore = useProjectStore.getState().project.tracks.flatMap((track) => track.clips).length;
+
+    useProjectStore.getState().duplicateSelectedClip();
+
+    expect(useProjectStore.getState().lastError).toContain("複製");
+    expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips).length).toBe(clipCountBefore);
+
+    useProjectStore.getState().setSelectedClipId("cap-1");
+    useProjectStore.getState().toggleTrackLocked("layer-3");
+    useProjectStore.getState().duplicateSelectedClip();
+
+    expect(useProjectStore.getState().lastError).toContain("ロック中");
+  });
+
   it("reports an error when removing without a selected object", () => {
     useProjectStore.getState().resetSample();
     useProjectStore.getState().setSelectedClipId("");

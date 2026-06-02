@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { applyCommandsChecked } from "../commands";
 import { emptyEffect } from "../defaults";
+import { resolveKeyboardShortcut } from "../keyboardShortcuts";
 import { parseLlmResponseText } from "../llm";
 import { migrateProject } from "../migrations";
 import { ffmpegRenderer } from "../renderers/ffmpeg";
@@ -31,6 +32,22 @@ describe("project core", () => {
     const parsed = parseProjectJson(serializeProject(sampleProject));
 
     expect(parsed).toEqual(sampleProject);
+  });
+
+  it("resolves editor keyboard shortcuts without touching unrelated keys", () => {
+    expect(resolveKeyboardShortcut({ key: "z", ctrlKey: true })).toBe("undo");
+    expect(resolveKeyboardShortcut({ key: "z", metaKey: true, shiftKey: true })).toBe("redo");
+    expect(resolveKeyboardShortcut({ key: "y", ctrlKey: true })).toBe("redo");
+    expect(resolveKeyboardShortcut({ key: "d", ctrlKey: true })).toBe("duplicate");
+    expect(resolveKeyboardShortcut({ key: "k", ctrlKey: true })).toBe("split");
+    expect(resolveKeyboardShortcut({ key: "Delete" })).toBe("remove");
+    expect(resolveKeyboardShortcut({ key: "Backspace" })).toBe("remove");
+    expect(resolveKeyboardShortcut({ key: "Delete", shiftKey: true })).toBe("rippleRemove");
+    expect(resolveKeyboardShortcut({ key: "ArrowLeft" })).toBe("stepLeft");
+    expect(resolveKeyboardShortcut({ key: "ArrowRight" })).toBe("stepRight");
+    expect(resolveKeyboardShortcut({ key: "d", ctrlKey: true, altKey: true })).toBeNull();
+    expect(resolveKeyboardShortcut({ key: "Delete", altKey: true })).toBeNull();
+    expect(resolveKeyboardShortcut({ key: "a" })).toBeNull();
   });
 
   it("keeps keyframed properties in the same schema path as static values", () => {

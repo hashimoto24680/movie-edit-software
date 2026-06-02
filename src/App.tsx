@@ -28,6 +28,7 @@ import {
   X
 } from "lucide-react";
 import { type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { resolveKeyboardShortcut } from "./core/keyboardShortcuts";
 import { fpsToNumber, framesToSeconds, framesToTimecode, secondsToFrames } from "./core/time";
 import { hasSoloTracks, isTrackAudibleOrVisible } from "./core/trackVisibility";
 import { allClips } from "./core/validation";
@@ -79,6 +80,12 @@ const clipKind = (project: ProjectAst, clip: Clip): "audio" | "video" | "caption
 };
 
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+
+const isEditingTextInput = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) return false;
+  const tagName = target.tagName.toLowerCase();
+  return target.isContentEditable || tagName === "input" || tagName === "textarea" || tagName === "select";
+};
 
 const nearestSnapFrame = (
   frame: number,
@@ -356,17 +363,17 @@ function Preview() {
             <Type aria-hidden />
             テキスト
           </button>
-          <button className="tool-button" onClick={splitSelectedClipAtPlayhead}>
+          <button className="tool-button" title="分割 (Ctrl+K)" onClick={splitSelectedClipAtPlayhead}>
             <Scissors aria-hidden />
             分割
           </button>
-          <button className="icon-button" title="選択オブジェクトを複製" onClick={duplicateSelectedClip}>
+          <button className="icon-button" title="選択オブジェクトを複製 (Ctrl+D)" onClick={duplicateSelectedClip}>
             <Copy aria-hidden />
           </button>
-          <button className="icon-button" title="選択オブジェクトを削除" onClick={removeSelectedClip}>
+          <button className="icon-button" title="選択オブジェクトを削除 (Delete)" onClick={removeSelectedClip}>
             <Trash2 aria-hidden />
           </button>
-          <button className="icon-button" title="選択オブジェクトをリップル削除" onClick={rippleRemoveSelectedClip}>
+          <button className="icon-button" title="選択オブジェクトをリップル削除 (Shift+Delete)" onClick={rippleRemoveSelectedClip}>
             <ChevronsLeft aria-hidden />
           </button>
         </div>
@@ -1337,6 +1344,45 @@ function TopBar({ onOpenSequenceSettings }: { onOpenSequenceSettings: () => void
 
 export default function App() {
   const [sequenceSettingsOpen, setSequenceSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isEditingTextInput(event.target)) return;
+      const action = resolveKeyboardShortcut(event);
+      if (!action) return;
+      event.preventDefault();
+
+      switch (action) {
+        case "undo":
+          useProjectStore.getState().undo();
+          break;
+        case "redo":
+          useProjectStore.getState().redo();
+          break;
+        case "duplicate":
+          useProjectStore.getState().duplicateSelectedClip();
+          break;
+        case "split":
+          useProjectStore.getState().splitSelectedClipAtPlayhead();
+          break;
+        case "remove":
+          useProjectStore.getState().removeSelectedClip();
+          break;
+        case "rippleRemove":
+          useProjectStore.getState().rippleRemoveSelectedClip();
+          break;
+        case "stepLeft":
+          useProjectStore.getState().setPlayheadFrame(Math.max(0, useProjectStore.getState().playheadFrame - 1));
+          break;
+        case "stepRight":
+          useProjectStore.getState().setPlayheadFrame(useProjectStore.getState().playheadFrame + 1);
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return (
     <div className="app-shell">

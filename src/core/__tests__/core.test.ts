@@ -512,6 +512,18 @@ describe("project core", () => {
     expect(useProjectStore.getState().selectedClipId).toBe("clip-bgm-1");
   });
 
+  it("toggles timeline snapping as editor UI state", () => {
+    useProjectStore.getState().resetSample();
+
+    expect(useProjectStore.getState().timelineSnappingEnabled).toBe(true);
+
+    useProjectStore.getState().toggleTimelineSnapping();
+    expect(useProjectStore.getState().timelineSnappingEnabled).toBe(false);
+
+    useProjectStore.getState().toggleTimelineSnapping();
+    expect(useProjectStore.getState().timelineSnappingEnabled).toBe(true);
+  });
+
   it("selects every timeline object through the store", () => {
     useProjectStore.getState().resetSample();
 

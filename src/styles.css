@@ -167,6 +167,12 @@ button {
   color: #ffffff;
 }
 
+.icon-button.active {
+  color: #f3d77c;
+  border: 1px solid #6f6238;
+  background: #252414;
+}
+
 .tool-button.primary:hover,
 .icon-button.primary:hover {
   background: #2590a4;
@@ -518,6 +524,8 @@ input[type="range"] {
 }
 
 .timeline-headline {
+  position: relative;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: space-between;

@@ -11,6 +11,7 @@ import {
   History,
   Layers,
   Lock,
+  Magnet,
   MoveDown,
   MoveLeft,
   MoveRight,
@@ -722,7 +723,9 @@ function SequenceSettingsModal({ open, onClose }: { open: boolean; onClose: () =
 function Timeline() {
   const project = useProjectStore((state) => state.project);
   const playheadFrame = useProjectStore((state) => state.playheadFrame);
+  const timelineSnappingEnabled = useProjectStore((state) => state.timelineSnappingEnabled);
   const setPlayheadFrame = useProjectStore((state) => state.setPlayheadFrame);
+  const toggleTimelineSnapping = useProjectStore((state) => state.toggleTimelineSnapping);
   const addMarkerAtPlayhead = useProjectStore((state) => state.addMarkerAtPlayhead);
   const removeMarkerAtPlayhead = useProjectStore((state) => state.removeMarkerAtPlayhead);
   const jumpPlayheadToMarker = useProjectStore((state) => state.jumpPlayheadToMarker);
@@ -792,9 +795,9 @@ function Timeline() {
   const snapThresholdFrames = Math.max(1, Math.round((timelineFrameRange / laneWidth) * 10));
   const snapFrames = timelineBoundaryFrames(project);
   const snapGuideLeft =
-    timelineDrag?.snapGuideFrame !== null && timelineDrag?.snapGuideFrame !== undefined
+    timelineSnappingEnabled && timelineDrag?.snapGuideFrame !== null && timelineDrag?.snapGuideFrame !== undefined
       ? frameToCanvasX(timelineDrag.snapGuideFrame)
-      : timelineTrim?.snapGuideFrame !== null && timelineTrim?.snapGuideFrame !== undefined
+      : timelineSnappingEnabled && timelineTrim?.snapGuideFrame !== null && timelineTrim?.snapGuideFrame !== undefined
         ? frameToCanvasX(timelineTrim.snapGuideFrame)
       : null;
 
@@ -815,7 +818,7 @@ function Timeline() {
   }, []);
 
   const snapPlayheadFrame = (frame: number): number =>
-    nearestSnapFrame(frame, snapFrames, snapThresholdFrames).frame;
+    timelineSnappingEnabled ? nearestSnapFrame(frame, snapFrames, snapThresholdFrames).frame : frame;
 
   const selectNearestClipInTrack = (event: ReactMouseEvent<HTMLElement>, track: Track) => {
     if ((event.target as HTMLElement).closest(".clip-block")) return;
@@ -875,7 +878,9 @@ function Timeline() {
   ): { startFrame: number; durationFrames: number; boundaryFrame: number; snapGuideFrame: number | null } => {
     const selected = allClips(project).find(({ clip }) => clip.id === trim.clipId)?.clip;
     if (!selected) return trim;
-    const snap = nearestSnapFrame(frame, timelineBoundaryFrames(project, trim.clipId), snapThresholdFrames);
+    const snap = timelineSnappingEnabled
+      ? nearestSnapFrame(frame, timelineBoundaryFrames(project, trim.clipId), snapThresholdFrames)
+      : { frame, snapped: false };
     const snappedFrame = snap.frame;
     if (trim.edge === "end") {
       const boundaryFrame = Math.max(selected.startFrame + 1, snappedFrame);
@@ -922,7 +927,7 @@ function Timeline() {
       window.removeEventListener("pointermove", updateTrim);
       window.removeEventListener("pointerup", finishTrim);
     };
-  }, [project, timelineFrameRange, timelineTrim, snapThresholdFrames, trimClipOnTimeline]);
+  }, [project, timelineFrameRange, timelineSnappingEnabled, timelineTrim, snapThresholdFrames, trimClipOnTimeline]);
 
   const setPlayheadFromRulerPointer = (event: ReactPointerEvent<HTMLElement>): number => {
     const frame = snapPlayheadFrame(frameFromClientX(event.clientX, event.currentTarget, timelineFrameRange));
@@ -943,12 +948,15 @@ function Timeline() {
     if (!timelineRef.current || !timelineDrag) return;
     const target = nearestTimelineLane(timelineRef.current, event.clientX, event.clientY, timelineFrameRange);
     if (!target) return;
-    const snapped = snappedMoveFrame(
-      Math.round(target.frame - timelineDrag.offsetFrames),
-      timelineDrag.durationFrames,
-      timelineBoundaryFrames(project, timelineDrag.clipId),
-      snapThresholdFrames
-    );
+    const rawFrame = Math.round(target.frame - timelineDrag.offsetFrames);
+    const snapped = timelineSnappingEnabled
+      ? snappedMoveFrame(
+          rawFrame,
+          timelineDrag.durationFrames,
+          timelineBoundaryFrames(project, timelineDrag.clipId),
+          snapThresholdFrames
+        )
+      : { frame: rawFrame, guideFrame: null };
     setTimelineDrag({
       ...timelineDrag,
       targetTrackId: target.trackId,
@@ -962,12 +970,14 @@ function Timeline() {
     event.preventDefault();
     const target = nearestTimelineLane(timelineRef.current, event.clientX, event.clientY, timelineFrameRange);
     const snapped = target
-      ? snappedMoveFrame(
-          Math.round(target.frame - timelineDrag.offsetFrames),
-          timelineDrag.durationFrames,
-          timelineBoundaryFrames(project, timelineDrag.clipId),
-          snapThresholdFrames
-        )
+      ? timelineSnappingEnabled
+        ? snappedMoveFrame(
+            Math.round(target.frame - timelineDrag.offsetFrames),
+            timelineDrag.durationFrames,
+            timelineBoundaryFrames(project, timelineDrag.clipId),
+            snapThresholdFrames
+          )
+        : { frame: Math.round(target.frame - timelineDrag.offsetFrames), guideFrame: null }
       : { frame: timelineDrag.frame, guideFrame: timelineDrag.snapGuideFrame };
     if (timelineDrag.groupClipIds.length > 1) {
       moveSelectedClipsOnTimeline(
@@ -998,6 +1008,13 @@ function Timeline() {
             <Clock aria-hidden />
             {framesToTimecode(playheadFrame, project.render.fps)}
           </span>
+          <button
+            className={`icon-button ${timelineSnappingEnabled ? "active" : ""}`}
+            title={timelineSnappingEnabled ? "スナップON" : "スナップOFF"}
+            onClick={toggleTimelineSnapping}
+          >
+            <Magnet aria-hidden />
+          </button>
           <button className="icon-button" title="現在位置にマーカーを追加 (M)" onClick={addMarkerAtPlayhead}>
             <Flag aria-hidden />
           </button>

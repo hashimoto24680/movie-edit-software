@@ -28,6 +28,7 @@ interface ProjectStore {
   selectedClipId: string;
   selectedClipIds: string[];
   playheadFrame: number;
+  timelineSnappingEnabled: boolean;
   llmText: string;
   renderPlan: FfmpegManifest | null;
   renderStatus: string | null;
@@ -42,6 +43,7 @@ interface ProjectStore {
   selectAllClips: () => void;
   selectTrackClips: (trackId: string) => void;
   clearSelection: () => void;
+  toggleTimelineSnapping: () => void;
   setPlayheadFrame: (frame: number) => void;
   selectTimelineFrame: (frame: number) => void;
   addMarkerAtPlayhead: () => void;
@@ -180,6 +182,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   selectedClipId: "clip-talk-1",
   selectedClipIds: ["clip-talk-1"],
   playheadFrame: 0,
+  timelineSnappingEnabled: true,
   llmText: "この動画を横型SNS向けにして、字幕を読みやすく配置してください。",
   renderPlan: null,
   renderStatus: null,
@@ -214,6 +217,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({ selectedClipId: selectedClipIds.at(-1) ?? "", selectedClipIds });
   },
   clearSelection: () => set({ selectedClipId: "", selectedClipIds: [] }),
+  toggleTimelineSnapping: () => set((state) => ({ timelineSnappingEnabled: !state.timelineSnappingEnabled })),
   setPlayheadFrame: (playheadFrame) => set({ playheadFrame }),
   selectTimelineFrame: (frame) => {
     const { frameSelection } = get();
@@ -1105,6 +1109,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       selectedClipId: "clip-talk-1",
       selectedClipIds: ["clip-talk-1"],
       playheadFrame: 0,
+      timelineSnappingEnabled: true,
       llmText: "この動画を横型SNS向けにして、字幕を読みやすく配置してください。",
       renderPlan: null,
       renderStatus: null,

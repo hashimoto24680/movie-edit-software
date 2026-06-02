@@ -290,8 +290,32 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     if (added) set({ selectedClipId: id, selectedClipIds: [id] });
   },
   splitSelectedClipAtPlayhead: () => {
-    const { project, selectedClipId, playheadFrame } = get();
-    const selected = allClips(project).find(({ clip }) => clip.id === selectedClipId)?.clip;
+    const { project, selectedClipId, selectedClipIds, playheadFrame } = get();
+    const clips = allClips(project);
+    const targetClips = (selectedClipIds.length > 1 ? selectedClipIds : [selectedClipId])
+      .map((clipId) => clips.find(({ clip }) => clip.id === clipId)?.clip)
+      .filter((clip): clip is NonNullable<typeof clip> => Boolean(clip))
+      .filter((clip) => playheadFrame > clip.startFrame && playheadFrame < clip.startFrame + clip.durationFrames);
+    if (selectedClipIds.length > 1) {
+      if (targetClips.length === 0) {
+        set({ lastError: "分割位置が内側にある選択オブジェクトがありません。" });
+        return;
+      }
+      const commands: ProjectCommand[] = targetClips.map((clip) => ({
+        type: "splitClip",
+        clipId: clip.id,
+        atFrame: playheadFrame,
+        newClipId: `${clip.id}-split-${playheadFrame}`
+      }));
+      const added = get().commitCommands("Split selected timeline objects", commands, "gui");
+      if (added) {
+        const newClipIds = commands.map((command) => (command.type === "splitClip" ? command.newClipId ?? `${command.clipId}-split-${playheadFrame}` : ""));
+        set({ selectedClipId: newClipIds.at(-1) ?? "", selectedClipIds: newClipIds });
+      }
+      return;
+    }
+
+    const selected = clips.find(({ clip }) => clip.id === selectedClipId)?.clip;
     if (!selected) {
       set({ lastError: "分割するオブジェクトを選択してください。" });
       return;

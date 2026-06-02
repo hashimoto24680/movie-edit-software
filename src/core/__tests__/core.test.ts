@@ -387,6 +387,35 @@ describe("project core", () => {
     expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips).length).toBe(clipCountBefore);
   });
 
+  it("splits multiple selected timeline objects at the playhead", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipIds(["clip-talk-1", "clip-bgm-1"]);
+    useProjectStore.getState().setPlayheadFrame(120);
+
+    useProjectStore.getState().splitSelectedClipAtPlayhead();
+
+    const clips = useProjectStore.getState().project.tracks.flatMap((track) => track.clips);
+    expect(clips.find((clip) => clip.id === "clip-talk-1")?.durationFrames).toBe(120);
+    expect(clips.find((clip) => clip.id === "clip-bgm-1")?.durationFrames).toBe(120);
+    expect(clips.some((clip) => clip.id === "clip-talk-1-split-120")).toBe(true);
+    expect(clips.some((clip) => clip.id === "clip-bgm-1-split-120")).toBe(true);
+    expect(useProjectStore.getState().selectedClipIds).toEqual(["clip-talk-1-split-120", "clip-bgm-1-split-120"]);
+    expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
+  });
+
+  it("splits only selected timeline objects that contain the playhead", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipIds(["title-hero", "clip-talk-1", "clip-bgm-1"]);
+    useProjectStore.getState().setPlayheadFrame(120);
+
+    useProjectStore.getState().splitSelectedClipAtPlayhead();
+
+    const clips = useProjectStore.getState().project.tracks.flatMap((track) => track.clips);
+    expect(clips.some((clip) => clip.id === "title-hero-split-120")).toBe(false);
+    expect(clips.some((clip) => clip.id === "clip-talk-1-split-120")).toBe(true);
+    expect(clips.some((clip) => clip.id === "clip-bgm-1-split-120")).toBe(true);
+  });
+
   it("removes the selected timeline object through the store", () => {
     useProjectStore.getState().resetSample();
     useProjectStore.getState().setSelectedClipId("cap-1");

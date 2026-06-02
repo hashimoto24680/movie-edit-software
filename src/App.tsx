@@ -30,6 +30,7 @@ import {
 import { type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { resolveKeyboardShortcut } from "./core/keyboardShortcuts";
 import { calculateResizeScale } from "./core/previewResize";
+import { calculateRotation } from "./core/previewRotate";
 import { fpsToNumber, framesToSeconds, framesToTimecode, secondsToFrames } from "./core/time";
 import { hasSoloTracks, isTrackAudibleOrVisible } from "./core/trackVisibility";
 import { allClips } from "./core/validation";
@@ -323,10 +324,18 @@ function Preview() {
   } | null>(null);
   const [resize, setResize] = useState<{
     clipId: string;
+    center: Point2D;
     startPointer: Point2D;
     startScale: Point2D;
     currentScale: Point2D;
     direction: Point2D;
+  } | null>(null);
+  const [rotate, setRotate] = useState<{
+    clipId: string;
+    center: Point2D;
+    startPointer: Point2D;
+    startRotation: number;
+    currentRotation: number;
   } | null>(null);
 
   const beginCanvasDrag = (event: ReactPointerEvent<HTMLButtonElement>, clip: Clip, position: Point2D) => {
@@ -342,6 +351,11 @@ function Preview() {
       x: clamp((event.clientX - rect.left) / rect.width, 0, 1),
       y: clamp((event.clientY - rect.top) / rect.height, 0, 1)
     };
+    if (rotate) {
+      const currentRotation = calculateRotation(rotate.startRotation, rotate.center, rotate.startPointer, raw, event.shiftKey);
+      setRotate({ ...rotate, currentRotation });
+      return;
+    }
     if (resize) {
       const currentScale = calculateResizeScale(
         resize.startScale,
@@ -367,6 +381,12 @@ function Preview() {
   };
 
   const finishCanvasDrag = () => {
+    if (rotate) {
+      setSelectedClipId(rotate.clipId);
+      updateSelectedTransform({ rotation: rotate.currentRotation });
+      setRotate(null);
+      return;
+    }
     if (resize) {
       setSelectedClipId(resize.clipId);
       updateSelectedTransform({ scale: resize.currentScale });
@@ -382,6 +402,7 @@ function Preview() {
   const beginResize = (
     event: ReactPointerEvent<HTMLSpanElement>,
     clip: Clip,
+    center: Point2D,
     scale: Point2D,
     direction: Point2D
   ) => {
@@ -394,7 +415,25 @@ function Preview() {
       y: clamp((event.clientY - rect.top) / rect.height, 0, 1)
     };
     setSelectedClipId(clip.id);
-    setResize({ clipId: clip.id, startPointer, startScale: scale, currentScale: scale, direction });
+    setResize({ clipId: clip.id, center, startPointer, startScale: scale, currentScale: scale, direction });
+  };
+
+  const beginRotate = (
+    event: ReactPointerEvent<HTMLSpanElement>,
+    clip: Clip,
+    center: Point2D,
+    rotation: number
+  ) => {
+    if (!frameRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = frameRef.current.getBoundingClientRect();
+    const startPointer = {
+      x: clamp((event.clientX - rect.left) / rect.width, 0, 1),
+      y: clamp((event.clientY - rect.top) / rect.height, 0, 1)
+    };
+    setSelectedClipId(clip.id);
+    setRotate({ clipId: clip.id, center, startPointer, startRotation: rotation, currentRotation: rotation });
   };
 
   return (
@@ -438,29 +477,35 @@ function Preview() {
             const baseScale = staticPointValue(clip.transform.scale, { x: 1, y: 1 });
             const scale = resize?.clipId === clip.id ? resize.currentScale : baseScale;
             const opacity = staticNumberValue(clip.transform.opacity, 1);
-            const rotation = staticNumberValue(clip.transform.rotation, 0);
+            const baseRotation = staticNumberValue(clip.transform.rotation, 0);
+            const rotation = rotate?.clipId === clip.id ? rotate.currentRotation : baseRotation;
             const isSelected = selectedClipId === clip.id;
             const handles = isSelected ? (
               <>
                 <span
                   aria-hidden="true"
+                  className="preview-rotate-handle"
+                  onPointerDown={(event) => beginRotate(event, clip, position, rotation)}
+                />
+                <span
+                  aria-hidden="true"
                   className="preview-resize-handle top-left"
-                  onPointerDown={(event) => beginResize(event, clip, scale, { x: -1, y: -1 })}
+                  onPointerDown={(event) => beginResize(event, clip, position, scale, { x: -1, y: -1 })}
                 />
                 <span
                   aria-hidden="true"
                   className="preview-resize-handle top-right"
-                  onPointerDown={(event) => beginResize(event, clip, scale, { x: 1, y: -1 })}
+                  onPointerDown={(event) => beginResize(event, clip, position, scale, { x: 1, y: -1 })}
                 />
                 <span
                   aria-hidden="true"
                   className="preview-resize-handle bottom-left"
-                  onPointerDown={(event) => beginResize(event, clip, scale, { x: -1, y: 1 })}
+                  onPointerDown={(event) => beginResize(event, clip, position, scale, { x: -1, y: 1 })}
                 />
                 <span
                   aria-hidden="true"
                   className="preview-resize-handle bottom-right"
-                  onPointerDown={(event) => beginResize(event, clip, scale, { x: 1, y: 1 })}
+                  onPointerDown={(event) => beginResize(event, clip, position, scale, { x: 1, y: 1 })}
                 />
               </>
             ) : null;

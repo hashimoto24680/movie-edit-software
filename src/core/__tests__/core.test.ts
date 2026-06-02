@@ -3,6 +3,7 @@ import { applyCommandsChecked } from "../commands";
 import { emptyEffect } from "../defaults";
 import { resolveKeyboardShortcut } from "../keyboardShortcuts";
 import { calculateResizeScale } from "../previewResize";
+import { calculateRotation, normalizeRotation } from "../previewRotate";
 import { parseLlmResponseText } from "../llm";
 import { migrateProject } from "../migrations";
 import { ffmpegRenderer } from "../renderers/ffmpeg";
@@ -67,6 +68,14 @@ describe("project core", () => {
       x: 3,
       y: 0.1
     });
+  });
+
+  it("calculates preview rotation deltas and optional snapping", () => {
+    const center = { x: 0.5, y: 0.5 };
+    expect(calculateRotation(0, center, { x: 0.5, y: 0.25 }, { x: 0.75, y: 0.5 }, false)).toBeCloseTo(90);
+    expect(calculateRotation(7, center, { x: 0.5, y: 0.25 }, { x: 0.75, y: 0.5 }, true)).toBe(90);
+    expect(normalizeRotation(270)).toBe(-90);
+    expect(normalizeRotation(-270)).toBe(90);
   });
 
   it("keeps keyframed properties in the same schema path as static values", () => {

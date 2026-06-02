@@ -481,6 +481,32 @@ input[type="range"] {
   cursor: nwse-resize;
 }
 
+.preview-rotate-handle {
+  position: absolute;
+  top: -32px;
+  left: 50%;
+  z-index: 3;
+  width: 13px;
+  height: 13px;
+  border: 2px solid #101317;
+  border-radius: 50%;
+  background: #9fe1ff;
+  cursor: grab;
+  pointer-events: auto;
+  transform: translateX(-50%);
+}
+
+.preview-rotate-handle::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -19px;
+  width: 1px;
+  height: 18px;
+  background: #9fe1ff;
+  transform: translateX(-50%);
+}
+
 .timeline-panel {
   --track-label-width: 110px;
   --track-gap: 6px;

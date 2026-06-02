@@ -48,6 +48,9 @@ describe("project core", () => {
     expect(resolveKeyboardShortcut({ key: "Escape" })).toBe("clearSelection");
     expect(resolveKeyboardShortcut({ key: "d", ctrlKey: true })).toBe("duplicate");
     expect(resolveKeyboardShortcut({ key: "k", ctrlKey: true })).toBe("split");
+    expect(resolveKeyboardShortcut({ key: "m" })).toBe("addMarker");
+    expect(resolveKeyboardShortcut({ key: "m", shiftKey: true })).toBe("jumpNextMarker");
+    expect(resolveKeyboardShortcut({ key: "m", ctrlKey: true, shiftKey: true })).toBe("jumpPreviousMarker");
     expect(resolveKeyboardShortcut({ key: "Delete" })).toBe("remove");
     expect(resolveKeyboardShortcut({ key: "Backspace" })).toBe("remove");
     expect(resolveKeyboardShortcut({ key: "Delete", shiftKey: true })).toBe("rippleRemove");

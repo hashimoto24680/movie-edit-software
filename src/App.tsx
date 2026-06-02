@@ -998,16 +998,16 @@ function Timeline() {
             <Clock aria-hidden />
             {framesToTimecode(playheadFrame, project.render.fps)}
           </span>
-          <button className="icon-button" title="現在位置にマーカーを追加" onClick={addMarkerAtPlayhead}>
+          <button className="icon-button" title="現在位置にマーカーを追加 (M)" onClick={addMarkerAtPlayhead}>
             <Flag aria-hidden />
           </button>
           <button className="icon-button" title="現在位置のマーカーを削除" onClick={removeMarkerAtPlayhead}>
             <FlagOff aria-hidden />
           </button>
-          <button className="icon-button" title="前のマーカーへ移動" onClick={() => jumpPlayheadToMarker("previous")}>
+          <button className="icon-button" title="前のマーカーへ移動 (Ctrl+Shift+M)" onClick={() => jumpPlayheadToMarker("previous")}>
             <Rewind aria-hidden />
           </button>
-          <button className="icon-button" title="次のマーカーへ移動" onClick={() => jumpPlayheadToMarker("next")}>
+          <button className="icon-button" title="次のマーカーへ移動 (Shift+M)" onClick={() => jumpPlayheadToMarker("next")}>
             <FastForward aria-hidden />
           </button>
           <label className="timeline-zoom">
@@ -1875,6 +1875,15 @@ export default function App() {
           break;
         case "rippleRemove":
           useProjectStore.getState().rippleRemoveSelectedClip();
+          break;
+        case "addMarker":
+          useProjectStore.getState().addMarkerAtPlayhead();
+          break;
+        case "jumpPreviousMarker":
+          useProjectStore.getState().jumpPlayheadToMarker("previous");
+          break;
+        case "jumpNextMarker":
+          useProjectStore.getState().jumpPlayheadToMarker("next");
           break;
         case "jumpSelectedStart":
           useProjectStore.getState().jumpPlayheadToSelectedBoundary("start");

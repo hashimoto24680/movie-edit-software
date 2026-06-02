@@ -325,6 +325,7 @@ function Preview() {
   const alignSelectedHorizontally = useProjectStore((state) => state.alignSelectedHorizontally);
   const alignSelectedVertically = useProjectStore((state) => state.alignSelectedVertically);
   const moveSelectedClipLayer = useProjectStore((state) => state.moveSelectedClipLayer);
+  const moveSelectedClipToPlayhead = useProjectStore((state) => state.moveSelectedClipToPlayhead);
   const activeClips = activeCanvasClips(project, playheadFrame);
   const frameRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{
@@ -468,6 +469,9 @@ function Preview() {
           </button>
           <button className="icon-button" title="選択オブジェクトをリップル削除 (Shift+Delete)" onClick={rippleRemoveSelectedClip}>
             <ChevronsLeft aria-hidden />
+          </button>
+          <button className="icon-button" title="選択オブジェクトを再生ヘッドへ移動" onClick={moveSelectedClipToPlayhead}>
+            <Clock aria-hidden />
           </button>
           <button className="icon-button" title="上のレイヤーへ移動" onClick={() => moveSelectedClipLayer("up")}>
             <Layers aria-hidden />

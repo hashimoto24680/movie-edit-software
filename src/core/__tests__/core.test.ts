@@ -619,6 +619,42 @@ describe("project core", () => {
     ).toBe(true);
   });
 
+  it("moves the selected object to the playhead through the store", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("cap-1");
+    useProjectStore.getState().setPlayheadFrame(0);
+
+    useProjectStore.getState().moveSelectedClipToPlayhead();
+
+    let clip = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips)
+      .find((candidate) => candidate.id === "cap-1");
+    expect(clip?.startFrame).toBe(0);
+
+    useProjectStore.getState().undo();
+    clip = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips)
+      .find((candidate) => candidate.id === "cap-1");
+    expect(clip?.startFrame).toBe(36);
+  });
+
+  it("reports errors when moving to playhead is invalid", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("");
+
+    useProjectStore.getState().moveSelectedClipToPlayhead();
+
+    expect(useProjectStore.getState().lastError).toContain("再生ヘッド");
+
+    useProjectStore.getState().setSelectedClipId("clip-talk-2");
+    useProjectStore.getState().setPlayheadFrame(0);
+    useProjectStore.getState().moveSelectedClipToPlayhead();
+
+    expect(useProjectStore.getState().lastError).toContain("overlapping objects");
+  });
+
   it("reports errors when selected object cannot move to an adjacent layer", () => {
     useProjectStore.getState().resetSample();
     useProjectStore.getState().setSelectedClipId("clip-talk-1");

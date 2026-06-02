@@ -60,6 +60,7 @@ interface ProjectStore {
   toggleTrackSolo: (trackId: string) => void;
   moveClipOnTimeline: (clipId: string, targetTrackId: string, startFrame: number) => void;
   moveSelectedClipLayer: (direction: "up" | "down") => void;
+  moveSelectedClipToPlayhead: () => void;
   centerSelectedOnCanvas: () => void;
   fitSelectedToCanvas: (mode: CanvasFitMode) => void;
   alignSelectedHorizontally: (align: HorizontalAlign) => void;
@@ -534,6 +535,19 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     get().commitCommands(
       direction === "up" ? "Move object to upper layer" : "Move object to lower layer",
       [{ type: "moveClip", clipId: selectedClipId, targetTrackId: targetTrack.id, startFrame: selected.startFrame }],
+      "gui"
+    );
+  },
+  moveSelectedClipToPlayhead: () => {
+    const { project, selectedClipId, playheadFrame } = get();
+    const located = allClips(project).find(({ clip }) => clip.id === selectedClipId);
+    if (!located) {
+      set({ lastError: "再生ヘッドへ移動するオブジェクトを選択してください。" });
+      return;
+    }
+    get().commitCommands(
+      "Move object to playhead",
+      [{ type: "moveClip", clipId: selectedClipId, targetTrackId: located.track.id, startFrame: Math.max(0, playheadFrame) }],
       "gui"
     );
   },

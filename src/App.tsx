@@ -17,6 +17,8 @@ import {
   Monitor,
   PanelRight,
   Radio,
+  FastForward,
+  Rewind,
   RotateCcw,
   RotateCw,
   Save,
@@ -40,6 +42,7 @@ import { resolveKeyboardShortcut } from "./core/keyboardShortcuts";
 import { calculateResizeScale } from "./core/previewResize";
 import { calculateRotation } from "./core/previewRotate";
 import { fpsToNumber, framesToSeconds, framesToTimecode, secondsToFrames } from "./core/time";
+import { timelineBoundaryFrames } from "./core/timelineNavigation";
 import { hasSoloTracks, isTrackAudibleOrVisible } from "./core/trackVisibility";
 import { allClips } from "./core/validation";
 import { useProjectStore } from "./store/projectStore";
@@ -50,16 +53,6 @@ const selectedClip = (project: ProjectAst, clipId: string): Clip | undefined =>
 
 const timelineEnd = (project: ProjectAst): number =>
   Math.max(1, ...project.tracks.flatMap((track) => track.clips.map((clip) => clip.startFrame + clip.durationFrames)));
-
-const timelineBoundaryFrames = (project: ProjectAst, excludedClipId?: string): number[] =>
-  [
-    0,
-    ...project.tracks.flatMap((track) =>
-      track.clips.flatMap((clip) =>
-        clip.id === excludedClipId ? [] : [clip.startFrame, clip.startFrame + clip.durationFrames]
-      )
-    )
-  ].filter((frame, index, frames) => frames.indexOf(frame) === index);
 
 const activeCanvasClips = (project: ProjectAst, frame: number): Array<{ track: Track; clip: Clip }> => {
   const soloTracksExist = hasSoloTracks(project);
@@ -330,6 +323,7 @@ function Preview() {
   const moveSelectedClipLayer = useProjectStore((state) => state.moveSelectedClipLayer);
   const moveSelectedClipToPlayhead = useProjectStore((state) => state.moveSelectedClipToPlayhead);
   const jumpPlayheadToSelectedBoundary = useProjectStore((state) => state.jumpPlayheadToSelectedBoundary);
+  const jumpPlayheadToTimelineBoundary = useProjectStore((state) => state.jumpPlayheadToTimelineBoundary);
   const activeClips = activeCanvasClips(project, playheadFrame);
   const frameRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{
@@ -485,6 +479,12 @@ function Preview() {
           </button>
           <button className="icon-button" title="選択オブジェクトの終了へ移動 (])" onClick={() => jumpPlayheadToSelectedBoundary("end")}>
             <SkipForward aria-hidden />
+          </button>
+          <button className="icon-button" title="前の境界へ移動 (,)" onClick={() => jumpPlayheadToTimelineBoundary("previous")}>
+            <Rewind aria-hidden />
+          </button>
+          <button className="icon-button" title="次の境界へ移動 (.)" onClick={() => jumpPlayheadToTimelineBoundary("next")}>
+            <FastForward aria-hidden />
           </button>
           <button className="icon-button" title="上のレイヤーへ移動" onClick={() => moveSelectedClipLayer("up")}>
             <Layers aria-hidden />
@@ -1547,6 +1547,12 @@ export default function App() {
           break;
         case "jumpSelectedEnd":
           useProjectStore.getState().jumpPlayheadToSelectedBoundary("end");
+          break;
+        case "jumpPreviousBoundary":
+          useProjectStore.getState().jumpPlayheadToTimelineBoundary("previous");
+          break;
+        case "jumpNextBoundary":
+          useProjectStore.getState().jumpPlayheadToTimelineBoundary("next");
           break;
         case "stepLeft":
           useProjectStore.getState().setPlayheadFrame(Math.max(0, useProjectStore.getState().playheadFrame - 1));

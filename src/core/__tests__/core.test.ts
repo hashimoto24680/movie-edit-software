@@ -11,6 +11,7 @@ import { migrateProject } from "../migrations";
 import { ffmpegRenderer } from "../renderers/ffmpeg";
 import { sampleProject } from "../sampleProject";
 import { parseProjectFileJson, parseProjectJson, serializeProject, serializeProjectFile } from "../serializer";
+import { nearestTimelineBoundary, timelineBoundaryFrames } from "../timelineNavigation";
 import { validateProject } from "../validation";
 import { useProjectStore } from "../../store/projectStore";
 
@@ -49,6 +50,8 @@ describe("project core", () => {
     expect(resolveKeyboardShortcut({ key: "Delete", shiftKey: true })).toBe("rippleRemove");
     expect(resolveKeyboardShortcut({ key: "[" })).toBe("jumpSelectedStart");
     expect(resolveKeyboardShortcut({ key: "]" })).toBe("jumpSelectedEnd");
+    expect(resolveKeyboardShortcut({ key: "," })).toBe("jumpPreviousBoundary");
+    expect(resolveKeyboardShortcut({ key: "." })).toBe("jumpNextBoundary");
     expect(resolveKeyboardShortcut({ key: "ArrowLeft" })).toBe("stepLeft");
     expect(resolveKeyboardShortcut({ key: "ArrowRight" })).toBe("stepRight");
     expect(resolveKeyboardShortcut({ key: "d", ctrlKey: true, altKey: true })).toBeNull();
@@ -100,6 +103,18 @@ describe("project core", () => {
     expect(alignVerticalPosition({ x: 0.3, y: 0.4 }, "top")).toEqual({ x: 0.3, y: 0 });
     expect(alignVerticalPosition({ x: 0.3, y: 0.4 }, "middle")).toEqual({ x: 0.3, y: 0.5 });
     expect(alignVerticalPosition({ x: 0.3, y: 0.4 }, "bottom")).toEqual({ x: 0.3, y: 1 });
+  });
+
+  it("finds previous and next timeline boundaries", () => {
+    const boundaries = timelineBoundaryFrames(sampleProject);
+    expect(boundaries[0]).toBe(0);
+    expect(boundaries).toContain(36);
+    expect(boundaries).toContain(480);
+    expect(nearestTimelineBoundary(sampleProject, 100, "previous")).toBe(90);
+    expect(nearestTimelineBoundary(sampleProject, 100, "next")).toBe(102);
+    expect(nearestTimelineBoundary(sampleProject, 0, "previous")).toBeNull();
+    expect(nearestTimelineBoundary(sampleProject, 9999, "next")).toBeNull();
+    expect(timelineBoundaryFrames(sampleProject, "title-hero")).not.toContain(90);
   });
 
   it("keeps keyframed properties in the same schema path as static values", () => {
@@ -693,6 +708,27 @@ describe("project core", () => {
 
     expect(useProjectStore.getState().lastError).toContain("再生ヘッド");
     expect(useProjectStore.getState().playheadFrame).toBe(playheadBefore);
+  });
+
+  it("jumps the playhead to previous and next timeline boundaries", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setPlayheadFrame(100);
+
+    useProjectStore.getState().jumpPlayheadToTimelineBoundary("previous");
+    expect(useProjectStore.getState().playheadFrame).toBe(90);
+
+    useProjectStore.getState().jumpPlayheadToTimelineBoundary("next");
+    expect(useProjectStore.getState().playheadFrame).toBe(102);
+  });
+
+  it("reports an error when timeline boundary navigation has no target", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setPlayheadFrame(0);
+
+    useProjectStore.getState().jumpPlayheadToTimelineBoundary("previous");
+
+    expect(useProjectStore.getState().lastError).toContain("前の境界");
+    expect(useProjectStore.getState().playheadFrame).toBe(0);
   });
 
   it("reports errors when moving to playhead is invalid", () => {

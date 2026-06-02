@@ -8,6 +8,7 @@ import { ffmpegRenderer, type FfmpegManifest } from "../core/renderers/ffmpeg";
 import { sampleProject } from "../core/sampleProject";
 import { parseProjectFileJson, serializeProject, serializeProjectFile } from "../core/serializer";
 import { secondsToFrames } from "../core/time";
+import { nearestTimelineBoundary } from "../core/timelineNavigation";
 import { allClips } from "../core/validation";
 import type { Asset, AssetKind, CommandGroup, Point2D, ProjectAst, ProjectCommand, Track } from "../core/types";
 
@@ -63,6 +64,7 @@ interface ProjectStore {
   moveSelectedClipLayer: (direction: "up" | "down") => void;
   moveSelectedClipToPlayhead: () => void;
   jumpPlayheadToSelectedBoundary: (boundary: "start" | "end") => void;
+  jumpPlayheadToTimelineBoundary: (direction: "previous" | "next") => void;
   centerSelectedOnCanvas: () => void;
   fitSelectedToCanvas: (mode: CanvasFitMode) => void;
   alignSelectedHorizontally: (align: HorizontalAlign) => void;
@@ -590,6 +592,15 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       frameSelection: { startFrame: null, endFrame: null },
       lastError: null
     });
+  },
+  jumpPlayheadToTimelineBoundary: (direction) => {
+    const { project, playheadFrame } = get();
+    const frame = nearestTimelineBoundary(project, playheadFrame, direction);
+    if (frame === null) {
+      set({ lastError: direction === "previous" ? "前の境界がありません。" : "次の境界がありません。" });
+      return;
+    }
+    set({ playheadFrame: frame, frameSelection: { startFrame: null, endFrame: null }, lastError: null });
   },
   centerSelectedOnCanvas: () => {
     const { selectedClipId } = get();

@@ -43,6 +43,7 @@ describe("project core", () => {
     expect(resolveKeyboardShortcut({ key: "z", ctrlKey: true })).toBe("undo");
     expect(resolveKeyboardShortcut({ key: "z", metaKey: true, shiftKey: true })).toBe("redo");
     expect(resolveKeyboardShortcut({ key: "y", ctrlKey: true })).toBe("redo");
+    expect(resolveKeyboardShortcut({ key: "a", ctrlKey: true })).toBe("selectAll");
     expect(resolveKeyboardShortcut({ key: "d", ctrlKey: true })).toBe("duplicate");
     expect(resolveKeyboardShortcut({ key: "k", ctrlKey: true })).toBe("split");
     expect(resolveKeyboardShortcut({ key: "Delete" })).toBe("remove");
@@ -463,6 +464,16 @@ describe("project core", () => {
 
     expect(useProjectStore.getState().selectedClipIds).toEqual(["cap-1", "clip-bgm-1"]);
     expect(useProjectStore.getState().selectedClipId).toBe("clip-bgm-1");
+  });
+
+  it("selects every timeline object through the store", () => {
+    useProjectStore.getState().resetSample();
+
+    useProjectStore.getState().selectAllClips();
+
+    const allClipIds = useProjectStore.getState().project.tracks.flatMap((track) => track.clips.map((clip) => clip.id));
+    expect(useProjectStore.getState().selectedClipIds).toEqual(allClipIds);
+    expect(useProjectStore.getState().selectedClipId).toBe(allClipIds.at(-1));
   });
 
   it("nudges multiple selected timeline objects together and supports undo", () => {

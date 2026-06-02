@@ -1770,6 +1770,9 @@ export default function App() {
         case "redo":
           useProjectStore.getState().redo();
           break;
+        case "selectAll":
+          useProjectStore.getState().selectAllClips();
+          break;
         case "duplicate":
           useProjectStore.getState().duplicateSelectedClip();
           break;

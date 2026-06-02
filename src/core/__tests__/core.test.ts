@@ -453,6 +453,37 @@ describe("project core", () => {
     expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips).some((clip) => clip.id === duplicate?.id)).toBe(false);
   });
 
+  it("duplicates the selected timeline object at the playhead", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("cap-1");
+    useProjectStore.getState().setPlayheadFrame(300);
+
+    useProjectStore.getState().duplicateSelectedClipAtPlayhead();
+
+    const duplicate = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips)
+      .find((clip) => clip.id === useProjectStore.getState().selectedClipId);
+    expect(duplicate?.id).toContain("cap-1-copy-");
+    expect(duplicate?.startFrame).toBe(300);
+    expect(duplicate?.durationFrames).toBe(66);
+
+    useProjectStore.getState().undo();
+    expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips).some((clip) => clip.id === duplicate?.id)).toBe(false);
+  });
+
+  it("reports an error when duplicating at the playhead would overlap", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("cap-1");
+    useProjectStore.getState().setPlayheadFrame(80);
+    const selectedBefore = useProjectStore.getState().selectedClipId;
+
+    useProjectStore.getState().duplicateSelectedClipAtPlayhead();
+
+    expect(useProjectStore.getState().lastError).toContain("overlapping objects");
+    expect(useProjectStore.getState().selectedClipId).toBe(selectedBefore);
+  });
+
   it("reports errors when duplicating without a selection or on a locked layer", () => {
     useProjectStore.getState().resetSample();
     useProjectStore.getState().setSelectedClipId("");

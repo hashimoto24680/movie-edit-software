@@ -47,6 +47,7 @@ interface ProjectStore {
   removeSelectedClip: () => void;
   rippleRemoveSelectedClip: () => void;
   duplicateSelectedClip: () => void;
+  duplicateSelectedClipAtPlayhead: () => void;
   addUnsupportedEffectToSelected: () => void;
   updateSelectedText: (text: string) => void;
   updateSelectedTextStyle: (patch: Record<string, unknown>) => void;
@@ -341,6 +342,31 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     };
     const added = get().commitCommands(
       "Duplicate timeline object",
+      [{ type: "addClip", trackId: located.track.id, clip }],
+      "gui"
+    );
+    if (added) set({ selectedClipId: duplicateId });
+  },
+  duplicateSelectedClipAtPlayhead: () => {
+    const { project, selectedClipId, playheadFrame } = get();
+    const located = allClips(project).find(({ clip }) => clip.id === selectedClipId);
+    if (!located) {
+      set({ lastError: "再生ヘッドへ複製するオブジェクトを選択してください。" });
+      return;
+    }
+    if (located.track.locked) {
+      set({ lastError: "ロック中のレイヤーでは複製できません。" });
+      return;
+    }
+    const duplicateId = `${located.clip.id}-copy-${Date.now()}`;
+    const clip = {
+      ...structuredClone(located.clip),
+      id: duplicateId,
+      name: `${located.clip.name} copy`,
+      startFrame: Math.max(0, playheadFrame)
+    };
+    const added = get().commitCommands(
+      "Duplicate timeline object at playhead",
       [{ type: "addClip", trackId: located.track.id, clip }],
       "gui"
     );

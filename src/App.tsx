@@ -315,6 +315,7 @@ function Preview() {
   const addTextAtPlayhead = useProjectStore((state) => state.addTextAtPlayhead);
   const splitSelectedClipAtPlayhead = useProjectStore((state) => state.splitSelectedClipAtPlayhead);
   const duplicateSelectedClip = useProjectStore((state) => state.duplicateSelectedClip);
+  const duplicateSelectedClipAtPlayhead = useProjectStore((state) => state.duplicateSelectedClipAtPlayhead);
   const removeSelectedClip = useProjectStore((state) => state.removeSelectedClip);
   const rippleRemoveSelectedClip = useProjectStore((state) => state.rippleRemoveSelectedClip);
   const selectedClipId = useProjectStore((state) => state.selectedClipId);
@@ -463,6 +464,9 @@ function Preview() {
           </button>
           <button className="icon-button" title="選択オブジェクトを複製 (Ctrl+D)" onClick={duplicateSelectedClip}>
             <Copy aria-hidden />
+          </button>
+          <button className="icon-button" title="選択オブジェクトを再生ヘッドへ複製" onClick={duplicateSelectedClipAtPlayhead}>
+            <Clock aria-hidden />
           </button>
           <button className="icon-button" title="選択オブジェクトを削除 (Delete)" onClick={removeSelectedClip}>
             <Trash2 aria-hidden />

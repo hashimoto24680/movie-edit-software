@@ -397,6 +397,34 @@ describe("project core", () => {
     expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
   });
 
+  it("toggles multiple selected timeline objects and removes them together", () => {
+    useProjectStore.getState().resetSample();
+
+    useProjectStore.getState().toggleSelectedClipId("cap-1");
+    useProjectStore.getState().toggleSelectedClipId("cap-2");
+
+    expect(useProjectStore.getState().selectedClipIds).toEqual(["clip-talk-1", "cap-1", "cap-2"]);
+    expect(useProjectStore.getState().selectedClipId).toBe("cap-2");
+
+    useProjectStore.getState().removeSelectedClip();
+
+    let clipIds = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips.map((clip) => clip.id));
+    expect(clipIds).not.toContain("clip-talk-1");
+    expect(clipIds).not.toContain("cap-1");
+    expect(clipIds).not.toContain("cap-2");
+    expect(useProjectStore.getState().selectedClipIds.length).toBe(1);
+
+    useProjectStore.getState().undo();
+    clipIds = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips.map((clip) => clip.id));
+    expect(clipIds).toContain("clip-talk-1");
+    expect(clipIds).toContain("cap-1");
+    expect(clipIds).toContain("cap-2");
+  });
+
   it("ripple-removes a clip and closes the gap on the same layer", () => {
     const { project } = applyCommandsChecked(sampleProject, [{ type: "rippleRemoveClip", clipId: "cap-1" }]);
     const captionTrack = project.tracks.find((track) => track.id === "layer-3");

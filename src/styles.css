@@ -527,6 +527,12 @@ input[type="range"] {
   white-space: nowrap;
 }
 
+.selection-count {
+  color: #f3d77c;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .timeline-controls {
   display: grid;
   grid-template-columns: auto auto;

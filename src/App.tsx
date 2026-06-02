@@ -706,7 +706,9 @@ function Timeline() {
   const playheadFrame = useProjectStore((state) => state.playheadFrame);
   const setPlayheadFrame = useProjectStore((state) => state.setPlayheadFrame);
   const selectedClipId = useProjectStore((state) => state.selectedClipId);
+  const selectedClipIds = useProjectStore((state) => state.selectedClipIds);
   const setSelectedClipId = useProjectStore((state) => state.setSelectedClipId);
+  const toggleSelectedClipId = useProjectStore((state) => state.toggleSelectedClipId);
   const moveClipOnTimeline = useProjectStore((state) => state.moveClipOnTimeline);
   const trimClipOnTimeline = useProjectStore((state) => state.trimClipOnTimeline);
   const selectTimelineFrame = useProjectStore((state) => state.selectTimelineFrame);
@@ -895,6 +897,7 @@ function Timeline() {
         <div className="panel-title">
           <Layers aria-hidden />
           <span>タイムライン</span>
+          {selectedClipIds.length > 1 ? <span className="selection-count">{selectedClipIds.length}個選択</span> : null}
         </div>
         <div className="timeline-controls">
           <span className="timeline-time">
@@ -1034,16 +1037,21 @@ function Timeline() {
                   const displayDuration = isTrimming ? timelineTrim.durationFrames : clip.durationFrames;
                   const width = Math.max(0.15, (displayDuration / timelineFrameRange) * 100);
                   const kind = clipKind(project, clip);
+                  const isSelected = selectedClipIds.includes(clip.id);
                   if (isDragging && !draggedHere) return null;
                   return (
                     <button
-                      className={`clip-block ${kind} ${selectedClipId === clip.id ? "selected" : ""} ${
+                      className={`clip-block ${kind} ${isSelected ? "selected" : ""} ${
                         isDragging ? "dragging" : ""
                       }`}
                       key={clip.id}
                       style={{ left: `${left}%`, width: `${width}%` }}
                       draggable={!track.locked}
-                      onClick={() => {
+                      onClick={(event) => {
+                        if (event.shiftKey) {
+                          toggleSelectedClipId(clip.id);
+                          return;
+                        }
                         setSelectedClipId(clip.id);
                       }}
                       onDragStart={(event) => {
@@ -1122,7 +1130,7 @@ function Timeline() {
                 {track.clips
                   .filter(
                     (clip) =>
-                      selectedClipId === clip.id &&
+                      selectedClipIds.includes(clip.id) &&
                       (timelineDrag?.clipId !== clip.id || timelineDrag.targetTrackId === track.id)
                   )
                   .map((clip) => {

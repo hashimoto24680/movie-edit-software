@@ -26,6 +26,7 @@ interface ProjectStore {
   project: ProjectAst;
   history: HistoryState;
   selectedClipId: string;
+  selectedClipIds: string[];
   playheadFrame: number;
   llmText: string;
   renderPlan: FfmpegManifest | null;
@@ -36,6 +37,7 @@ interface ProjectStore {
   frameSelection: { startFrame: number | null; endFrame: number | null };
   llmStatus: string;
   setSelectedClipId: (clipId: string) => void;
+  toggleSelectedClipId: (clipId: string) => void;
   setPlayheadFrame: (frame: number) => void;
   selectTimelineFrame: (frame: number) => void;
   setLlmText: (text: string) => void;
@@ -164,6 +166,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   project: sampleProject,
   history: initialHistory,
   selectedClipId: "clip-talk-1",
+  selectedClipIds: ["clip-talk-1"],
   playheadFrame: 0,
   llmText: "この動画を横型SNS向けにして、字幕を読みやすく配置してください。",
   renderPlan: null,
@@ -173,7 +176,17 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   astJson: serializeProject(sampleProject),
   frameSelection: { startFrame: null, endFrame: null },
   llmStatus: "LLMへの自然文指示をここに入力できます。",
-  setSelectedClipId: (selectedClipId) => set({ selectedClipId }),
+  setSelectedClipId: (selectedClipId) => set({ selectedClipId, selectedClipIds: selectedClipId ? [selectedClipId] : [] }),
+  toggleSelectedClipId: (clipId) => {
+    const { selectedClipIds } = get();
+    const nextSelectedClipIds = selectedClipIds.includes(clipId)
+      ? selectedClipIds.filter((selectedId) => selectedId !== clipId)
+      : [...selectedClipIds, clipId];
+    set({
+      selectedClipId: nextSelectedClipIds.at(-1) ?? "",
+      selectedClipIds: nextSelectedClipIds
+    });
+  },
   setPlayheadFrame: (playheadFrame) => set({ playheadFrame }),
   selectTimelineFrame: (frame) => {
     const { frameSelection } = get();
@@ -266,7 +279,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       ],
       "gui"
     );
-    if (added) set({ selectedClipId: id });
+    if (added) set({ selectedClipId: id, selectedClipIds: [id] });
   },
   splitSelectedClipAtPlayhead: () => {
     const { project, selectedClipId, playheadFrame } = get();
@@ -286,24 +299,28 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       [{ type: "splitClip", clipId: selected.id, atFrame: playheadFrame, newClipId }],
       "gui"
     );
-    if (added) set({ selectedClipId: newClipId });
+    if (added) set({ selectedClipId: newClipId, selectedClipIds: [newClipId] });
   },
   removeSelectedClip: () => {
-    const { project, selectedClipId } = get();
+    const { project, selectedClipId, selectedClipIds } = get();
     const clips = allClips(project);
-    const selectedIndex = clips.findIndex(({ clip }) => clip.id === selectedClipId);
-    if (selectedIndex < 0) {
+    const selectedIds = selectedClipIds.filter((clipId) => clips.some(({ clip }) => clip.id === clipId));
+    const targetIds = selectedIds.length > 0 ? selectedIds : selectedClipId ? [selectedClipId] : [];
+    if (targetIds.length === 0) {
       set({ lastError: "削除するオブジェクトを選択してください。" });
       return;
     }
+    const selectedIndex = clips.findIndex(({ clip }) => clip.id === targetIds.at(-1));
     const nextSelectedClipId =
-      clips[selectedIndex + 1]?.clip.id ?? clips[selectedIndex - 1]?.clip.id ?? "";
+      clips.slice(selectedIndex + 1).find(({ clip }) => !targetIds.includes(clip.id))?.clip.id ??
+      [...clips.slice(0, selectedIndex)].reverse().find(({ clip }) => !targetIds.includes(clip.id))?.clip.id ??
+      "";
     const removed = get().commitCommands(
-      "Remove timeline object",
-      [{ type: "removeClip", clipId: selectedClipId }],
+      targetIds.length > 1 ? "Remove selected timeline objects" : "Remove timeline object",
+      targetIds.map((clipId) => ({ type: "removeClip", clipId })),
       "gui"
     );
-    if (removed) set({ selectedClipId: nextSelectedClipId });
+    if (removed) set({ selectedClipId: nextSelectedClipId, selectedClipIds: nextSelectedClipId ? [nextSelectedClipId] : [] });
   },
   rippleRemoveSelectedClip: () => {
     const { project, selectedClipId } = get();
@@ -318,7 +335,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       [{ type: "rippleRemoveClip", clipId: selectedClipId }],
       "gui"
     );
-    if (removed) set({ selectedClipId: nextSelectedClipId });
+    if (removed) set({ selectedClipId: nextSelectedClipId, selectedClipIds: nextSelectedClipId ? [nextSelectedClipId] : [] });
   },
   duplicateSelectedClip: () => {
     const { project, selectedClipId } = get();
@@ -349,7 +366,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       [{ type: "addClip", trackId: located.track.id, clip }],
       "gui"
     );
-    if (added) set({ selectedClipId: duplicateId });
+    if (added) set({ selectedClipId: duplicateId, selectedClipIds: [duplicateId] });
   },
   duplicateSelectedClipAtPlayhead: () => {
     const { project, selectedClipId, playheadFrame } = get();
@@ -374,7 +391,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       [{ type: "addClip", trackId: located.track.id, clip }],
       "gui"
     );
-    if (added) set({ selectedClipId: duplicateId });
+    if (added) set({ selectedClipId: duplicateId, selectedClipIds: [duplicateId] });
   },
   addUnsupportedEffectToSelected: () => {
     const { selectedClipId } = get();
@@ -515,7 +532,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     }
 
     const added = get().commitCommands(`Import ${validFiles.length} asset${validFiles.length > 1 ? "s" : ""}`, commands, "gui");
-    if (added) set({ selectedClipId: createdClipIds[0], renderStatus: null });
+    if (added) set({ selectedClipId: createdClipIds[0], selectedClipIds: [createdClipIds[0]], renderStatus: null });
   },
   updateCanvasSize: (width, height) => {
     const safeWidth = Math.max(16, Math.round(width));
@@ -700,9 +717,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     try {
       const project = parseProjectFileJson(text);
       const history = createHistory(project);
+      const firstClipId = project.tracks.flatMap((track) => track.clips)[0]?.id ?? "";
       set({
         ...syncFromHistory(history),
-        selectedClipId: project.tracks.flatMap((track) => track.clips)[0]?.id ?? "",
+        selectedClipId: firstClipId,
+        selectedClipIds: firstClipId ? [firstClipId] : [],
         playheadFrame: 0,
         frameSelection: { startFrame: null, endFrame: null },
         renderPlan: null,
@@ -766,6 +785,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({
       ...syncFromHistory(history),
       selectedClipId: "clip-talk-1",
+      selectedClipIds: ["clip-talk-1"],
       playheadFrame: 0,
       llmText: "この動画を横型SNS向けにして、字幕を読みやすく配置してください。",
       renderPlan: null,

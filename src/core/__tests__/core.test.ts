@@ -477,6 +477,20 @@ describe("project core", () => {
     expect(useProjectStore.getState().selectedClipId).toBe(allClipIds.at(-1));
   });
 
+  it("selects every timeline object on one layer through the store", () => {
+    useProjectStore.getState().resetSample();
+
+    useProjectStore.getState().selectTrackClips("layer-3");
+
+    expect(useProjectStore.getState().selectedClipIds).toEqual(["cap-1", "cap-2"]);
+    expect(useProjectStore.getState().selectedClipId).toBe("cap-2");
+
+    useProjectStore.getState().selectTrackClips("layer-5");
+
+    expect(useProjectStore.getState().selectedClipIds).toEqual([]);
+    expect(useProjectStore.getState().selectedClipId).toBe("");
+  });
+
   it("clears timeline selection through the store", () => {
     useProjectStore.getState().resetSample();
     useProjectStore.getState().selectAllClips();

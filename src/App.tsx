@@ -718,6 +718,7 @@ function Timeline() {
   const setSelectedClipId = useProjectStore((state) => state.setSelectedClipId);
   const setSelectedClipIds = useProjectStore((state) => state.setSelectedClipIds);
   const toggleSelectedClipId = useProjectStore((state) => state.toggleSelectedClipId);
+  const selectTrackClips = useProjectStore((state) => state.selectTrackClips);
   const moveClipOnTimeline = useProjectStore((state) => state.moveClipOnTimeline);
   const moveSelectedClipsOnTimeline = useProjectStore((state) => state.moveSelectedClipsOnTimeline);
   const trimClipOnTimeline = useProjectStore((state) => state.trimClipOnTimeline);
@@ -1088,7 +1089,15 @@ function Timeline() {
               }`}
               key={track.id}
             >
-              <div className="track-head">
+              <div
+                className="track-head"
+                onDoubleClick={(event) => {
+                  if ((event.target as HTMLElement).closest(".track-control-button")) return;
+                  event.stopPropagation();
+                  selectTrackClips(track.id);
+                }}
+                title={`${displayTrackName(track.name)}のオブジェクトを選択`}
+              >
                 <span>{displayTrackName(track.name)}</span>
                 <div className="track-controls" aria-label={`${displayTrackName(track.name)} controls`}>
                   <button

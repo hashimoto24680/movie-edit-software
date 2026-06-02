@@ -748,7 +748,7 @@ input[type="range"] {
   z-index: 7;
   border: 0;
   padding: 0;
-  cursor: pointer;
+  cursor: ew-resize;
   background: color-mix(in srgb, var(--marker-color, #f3d77c) 78%, transparent);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
   pointer-events: auto;

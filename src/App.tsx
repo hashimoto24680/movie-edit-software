@@ -729,6 +729,7 @@ function Timeline() {
   const addMarkerAtPlayhead = useProjectStore((state) => state.addMarkerAtPlayhead);
   const removeMarkerAtPlayhead = useProjectStore((state) => state.removeMarkerAtPlayhead);
   const jumpPlayheadToMarker = useProjectStore((state) => state.jumpPlayheadToMarker);
+  const updateMarker = useProjectStore((state) => state.updateMarker);
   const selectedClipId = useProjectStore((state) => state.selectedClipId);
   const selectedClipIds = useProjectStore((state) => state.selectedClipIds);
   const setSelectedClipId = useProjectStore((state) => state.setSelectedClipId);
@@ -768,6 +769,12 @@ function Timeline() {
     boundaryFrame: number;
     snapGuideFrame: number | null;
   } | null>(null);
+  const [markerDrag, setMarkerDrag] = useState<{
+    markerId: string;
+    originalFrame: number;
+    frame: number;
+    snapGuideFrame: number | null;
+  } | null>(null);
   const [playheadDragging, setPlayheadDragging] = useState(false);
   const [timelineRangeSelect, setTimelineRangeSelect] = useState<{
     startX: number;
@@ -799,6 +806,8 @@ function Timeline() {
       ? frameToCanvasX(timelineDrag.snapGuideFrame)
       : timelineSnappingEnabled && timelineTrim?.snapGuideFrame !== null && timelineTrim?.snapGuideFrame !== undefined
         ? frameToCanvasX(timelineTrim.snapGuideFrame)
+      : timelineSnappingEnabled && markerDrag?.snapGuideFrame !== null && markerDrag?.snapGuideFrame !== undefined
+        ? frameToCanvasX(markerDrag.snapGuideFrame)
       : null;
 
   useLayoutEffect(() => {
@@ -819,6 +828,14 @@ function Timeline() {
 
   const snapPlayheadFrame = (frame: number): number =>
     timelineSnappingEnabled ? nearestSnapFrame(frame, snapFrames, snapThresholdFrames).frame : frame;
+
+  const frameFromTimelineCanvasX = (clientX: number): number => {
+    const rect = timelineCanvasRef.current?.getBoundingClientRect();
+    if (!rect) return 0;
+    const laneLeft = rect.left + timelineLaneOffset;
+    const ratio = clamp((clientX - laneLeft) / laneWidth, 0, 1);
+    return Math.round(ratio * timelineFrameRange);
+  };
 
   const selectNearestClipInTrack = (event: ReactMouseEvent<HTMLElement>, track: Track) => {
     if ((event.target as HTMLElement).closest(".clip-block")) return;
@@ -928,6 +945,42 @@ function Timeline() {
       window.removeEventListener("pointerup", finishTrim);
     };
   }, [project, timelineFrameRange, timelineSnappingEnabled, timelineTrim, snapThresholdFrames, trimClipOnTimeline]);
+
+  useEffect(() => {
+    if (!markerDrag) return;
+
+    const previewMarkerFrame = (clientX: number): { frame: number; snapGuideFrame: number | null } => {
+      const frame = frameFromTimelineCanvasX(clientX);
+      if (!timelineSnappingEnabled) return { frame, snapGuideFrame: null };
+      const snap = nearestSnapFrame(
+        frame,
+        snapFrames.filter((candidate) => candidate !== markerDrag.originalFrame),
+        snapThresholdFrames
+      );
+      return { frame: snap.frame, snapGuideFrame: snap.snapped ? snap.frame : null };
+    };
+
+    const updateMarkerDrag = (event: PointerEvent) => {
+      const next = previewMarkerFrame(event.clientX);
+      setMarkerDrag({ ...markerDrag, ...next });
+    };
+
+    const finishMarkerDrag = (event: PointerEvent) => {
+      const next = previewMarkerFrame(event.clientX);
+      if (next.frame !== markerDrag.originalFrame) {
+        updateMarker(markerDrag.markerId, { frame: next.frame });
+      }
+      setPlayheadFrame(next.frame);
+      setMarkerDrag(null);
+    };
+
+    window.addEventListener("pointermove", updateMarkerDrag);
+    window.addEventListener("pointerup", finishMarkerDrag, { once: true });
+    return () => {
+      window.removeEventListener("pointermove", updateMarkerDrag);
+      window.removeEventListener("pointerup", finishMarkerDrag);
+    };
+  }, [laneWidth, markerDrag, snapFrames, snapThresholdFrames, timelineFrameRange, timelineSnappingEnabled, updateMarker, setPlayheadFrame]);
 
   const setPlayheadFromRulerPointer = (event: ReactPointerEvent<HTMLElement>): number => {
     const frame = snapPlayheadFrame(frameFromClientX(event.clientX, event.currentTarget, timelineFrameRange));
@@ -1122,18 +1175,33 @@ function Timeline() {
             <span className="ruler-label end">{framesToTimecode(timelineFrameRange, project.render.fps)}</span>
           </div>
           {project.markers.map((marker) => (
+            (() => {
+              const displayFrame = markerDrag?.markerId === marker.id ? markerDrag.frame : marker.frame;
+              return (
             <button
               aria-label={`${marker.label}へ移動`}
               className="timeline-marker-line"
               key={marker.id}
               onClick={(event) => {
                 event.stopPropagation();
-                setPlayheadFrame(marker.frame);
+                setPlayheadFrame(displayFrame);
               }}
-              style={{ left: `${frameToCanvasX(marker.frame)}px`, "--marker-color": marker.color } as ReactCSSProperties}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setMarkerDrag({
+                  markerId: marker.id,
+                  originalFrame: marker.frame,
+                  frame: marker.frame,
+                  snapGuideFrame: null
+                });
+              }}
+              style={{ left: `${frameToCanvasX(displayFrame)}px`, "--marker-color": marker.color } as ReactCSSProperties}
               title={`${marker.label}へ移動`}
               type="button"
             />
+              );
+            })()
           ))}
           <span className="timeline-playhead-line" style={{ left: `${timelinePlayheadLeft}px` }} />
           {snapGuideLeft !== null ? <span className="timeline-snap-line" style={{ left: `${snapGuideLeft}px` }} /> : null}

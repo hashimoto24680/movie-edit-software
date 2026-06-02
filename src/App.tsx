@@ -1105,12 +1105,17 @@ function Timeline() {
             <span className="ruler-label end">{framesToTimecode(timelineFrameRange, project.render.fps)}</span>
           </div>
           {project.markers.map((marker) => (
-            <span
-              aria-hidden="true"
+            <button
+              aria-label={`${marker.label}へ移動`}
               className="timeline-marker-line"
               key={marker.id}
+              onClick={(event) => {
+                event.stopPropagation();
+                setPlayheadFrame(marker.frame);
+              }}
               style={{ left: `${frameToCanvasX(marker.frame)}px`, "--marker-color": marker.color } as ReactCSSProperties}
-              title={marker.label}
+              title={`${marker.label}へ移動`}
+              type="button"
             />
           ))}
           <span className="timeline-playhead-line" style={{ left: `${timelinePlayheadLeft}px` }} />

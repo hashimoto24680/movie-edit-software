@@ -114,12 +114,14 @@ describe("project core", () => {
     const boundaries = timelineBoundaryFrames(sampleProject);
     expect(boundaries[0]).toBe(0);
     expect(boundaries).toContain(36);
+    expect(boundaries).toContain(120);
     expect(boundaries).toContain(480);
     expect(nearestTimelineBoundary(sampleProject, 100, "previous")).toBe(90);
     expect(nearestTimelineBoundary(sampleProject, 100, "next")).toBe(102);
     expect(nearestTimelineBoundary(sampleProject, 0, "previous")).toBeNull();
     expect(nearestTimelineBoundary(sampleProject, 9999, "next")).toBeNull();
     expect(timelineBoundaryFrames(sampleProject, "title-hero")).not.toContain(90);
+    expect(timelineBoundaryFrames(sampleProject, "title-hero")).toContain(120);
   });
 
   it("keeps keyframed properties in the same schema path as static values", () => {

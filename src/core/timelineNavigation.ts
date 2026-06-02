@@ -7,7 +7,8 @@ export const timelineBoundaryFrames = (project: ProjectAst, excludedClipId?: str
       track.clips.flatMap((clip) =>
         clip.id === excludedClipId ? [] : [clip.startFrame, clip.startFrame + clip.durationFrames]
       )
-    )
+    ),
+    ...project.markers.map((marker) => marker.frame)
   ]
     .filter((frame, index, frames) => frames.indexOf(frame) === index)
     .sort((a, b) => a - b);

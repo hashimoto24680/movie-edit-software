@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { applyCommandsChecked } from "../commands";
+import { calculateCanvasFitScale, centerPosition } from "../canvasFit";
 import { emptyEffect } from "../defaults";
 import { resolveKeyboardShortcut } from "../keyboardShortcuts";
 import { calculateResizeScale } from "../previewResize";
@@ -76,6 +77,17 @@ describe("project core", () => {
     expect(calculateRotation(7, center, { x: 0.5, y: 0.25 }, { x: 0.75, y: 0.5 }, true)).toBe(90);
     expect(normalizeRotation(270)).toBe(-90);
     expect(normalizeRotation(-270)).toBe(90);
+  });
+
+  it("calculates canvas center and fit scales", () => {
+    expect(centerPosition()).toEqual({ x: 0.5, y: 0.5 });
+    expect(calculateCanvasFitScale("width", "media", { width: 1080, height: 1920 }, { width: 1920, height: 1080 }).x).toBeCloseTo(
+      100 / 72
+    );
+    expect(calculateCanvasFitScale("height", "media", { width: 1080, height: 1920 }, { width: 1920, height: 1080 }).x).toBeCloseTo(
+      100 / (72 * ((1080 / 1920) / (1920 / 1080)))
+    );
+    expect(calculateCanvasFitScale("height", "text", { width: 1080, height: 1920 }).x).toBeCloseTo(100 / 78);
   });
 
   it("keeps keyframed properties in the same schema path as static values", () => {
@@ -521,6 +533,37 @@ describe("project core", () => {
     expect(clip?.durationFrames).toBe(90);
     expect(clip?.type === "media" ? clip.sourceDurationFrames : null).toBe(90);
     expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
+  });
+
+  it("centers and fits the selected object to the canvas through the store", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("clip-talk-1");
+
+    useProjectStore.getState().centerSelectedOnCanvas();
+    let clip = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips)
+      .find((candidate) => candidate.id === "clip-talk-1");
+    expect(clip && "transform" in clip && clip.transform.position.mode === "static" ? clip.transform.position.value : null).toEqual({
+      x: 0.5,
+      y: 0.5
+    });
+
+    useProjectStore.getState().fitSelectedToCanvas("width");
+    clip = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips)
+      .find((candidate) => candidate.id === "clip-talk-1");
+    expect(clip && "transform" in clip && clip.transform.scale.mode === "static" ? clip.transform.scale.value.x : null).toBeCloseTo(
+      100 / 72
+    );
+
+    useProjectStore.getState().undo();
+    clip = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips)
+      .find((candidate) => candidate.id === "clip-talk-1");
+    expect(clip && "transform" in clip && clip.transform.scale.mode === "static" ? clip.transform.scale.value.x : null).toBe(1);
   });
 
   it("toggles layer lock, mute, and solo through the store history", () => {

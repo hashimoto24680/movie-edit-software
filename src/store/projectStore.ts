@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { applyCommandsChecked } from "../core/commands";
+import { calculateCanvasFitScale, centerPosition, type CanvasFitMode } from "../core/canvasFit";
 import { defaultAudio, defaultTransform, emptyEffect, staticNumber, staticPoint } from "../core/defaults";
 import { createHistory, currentProjectFromHistory, redoHistory, undoHistory, commitHistory, type HistoryState } from "../core/history";
 import { ffmpegRenderer, type FfmpegManifest } from "../core/renderers/ffmpeg";
@@ -57,6 +58,8 @@ interface ProjectStore {
   toggleTrackMuted: (trackId: string) => void;
   toggleTrackSolo: (trackId: string) => void;
   moveClipOnTimeline: (clipId: string, targetTrackId: string, startFrame: number) => void;
+  centerSelectedOnCanvas: () => void;
+  fitSelectedToCanvas: (mode: CanvasFitMode) => void;
   updateSelectedTransform: (patch: {
     position?: Point2D;
     scale?: Point2D;
@@ -502,6 +505,30 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     get().commitCommands(
       "Move timeline object",
       [{ type: "moveClip", clipId, targetTrackId, startFrame: nextStartFrame }],
+      "gui"
+    );
+  },
+  centerSelectedOnCanvas: () => {
+    const { selectedClipId } = get();
+    get().commitCommands(
+      "Center selected object",
+      [{ type: "updateClipTransform", clipId: selectedClipId, position: centerPosition() }],
+      "gui"
+    );
+  },
+  fitSelectedToCanvas: (mode) => {
+    const { project, selectedClipId } = get();
+    const selected = allClips(project).find(({ clip }) => clip.id === selectedClipId)?.clip;
+    if (!selected) {
+      set({ lastError: "キャンバスに合わせるオブジェクトを選択してください。" });
+      return;
+    }
+    const asset = selected.type === "media" ? project.assets.find((candidate) => candidate.id === selected.assetId) : undefined;
+    const source = asset?.width && asset.height ? { width: asset.width, height: asset.height } : undefined;
+    const scale = calculateCanvasFitScale(mode, selected.type === "media" ? "media" : "text", project.render.size, source);
+    get().commitCommands(
+      mode === "width" ? "Fit selected object to width" : "Fit selected object to height",
+      [{ type: "updateClipTransform", clipId: selectedClipId, position: centerPosition(), scale }],
       "gui"
     );
   },

@@ -2,12 +2,14 @@ import {
   ChevronsLeft,
   Clock,
   Copy,
+  Crosshair,
   Download,
   FileVideo,
   Film,
   History,
   Layers,
   Lock,
+  Maximize2,
   Monitor,
   PanelRight,
   Radio,
@@ -314,6 +316,8 @@ function Preview() {
   const selectedClipId = useProjectStore((state) => state.selectedClipId);
   const setSelectedClipId = useProjectStore((state) => state.setSelectedClipId);
   const updateSelectedTransform = useProjectStore((state) => state.updateSelectedTransform);
+  const centerSelectedOnCanvas = useProjectStore((state) => state.centerSelectedOnCanvas);
+  const fitSelectedToCanvas = useProjectStore((state) => state.fitSelectedToCanvas);
   const activeClips = activeCanvasClips(project, playheadFrame);
   const frameRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{
@@ -457,6 +461,15 @@ function Preview() {
           </button>
           <button className="icon-button" title="選択オブジェクトをリップル削除 (Shift+Delete)" onClick={rippleRemoveSelectedClip}>
             <ChevronsLeft aria-hidden />
+          </button>
+          <button className="icon-button" title="キャンバス中央へ配置" onClick={centerSelectedOnCanvas}>
+            <Crosshair aria-hidden />
+          </button>
+          <button className="icon-button" title="キャンバス幅に合わせる" onClick={() => fitSelectedToCanvas("width")}>
+            <Maximize2 aria-hidden />
+          </button>
+          <button className="icon-button" title="キャンバス高さに合わせる" onClick={() => fitSelectedToCanvas("height")}>
+            <Maximize2 aria-hidden />
           </button>
         </div>
       </div>

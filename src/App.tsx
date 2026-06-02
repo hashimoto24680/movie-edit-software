@@ -22,6 +22,8 @@ import {
   Save,
   Scissors,
   Settings,
+  SkipBack,
+  SkipForward,
   Sparkles,
   Move,
   Trash2,
@@ -327,6 +329,7 @@ function Preview() {
   const alignSelectedVertically = useProjectStore((state) => state.alignSelectedVertically);
   const moveSelectedClipLayer = useProjectStore((state) => state.moveSelectedClipLayer);
   const moveSelectedClipToPlayhead = useProjectStore((state) => state.moveSelectedClipToPlayhead);
+  const jumpPlayheadToSelectedBoundary = useProjectStore((state) => state.jumpPlayheadToSelectedBoundary);
   const activeClips = activeCanvasClips(project, playheadFrame);
   const frameRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{
@@ -476,6 +479,12 @@ function Preview() {
           </button>
           <button className="icon-button" title="選択オブジェクトを再生ヘッドへ移動" onClick={moveSelectedClipToPlayhead}>
             <Clock aria-hidden />
+          </button>
+          <button className="icon-button" title="選択オブジェクトの開始へ移動 ([)" onClick={() => jumpPlayheadToSelectedBoundary("start")}>
+            <SkipBack aria-hidden />
+          </button>
+          <button className="icon-button" title="選択オブジェクトの終了へ移動 (])" onClick={() => jumpPlayheadToSelectedBoundary("end")}>
+            <SkipForward aria-hidden />
           </button>
           <button className="icon-button" title="上のレイヤーへ移動" onClick={() => moveSelectedClipLayer("up")}>
             <Layers aria-hidden />
@@ -1532,6 +1541,12 @@ export default function App() {
           break;
         case "rippleRemove":
           useProjectStore.getState().rippleRemoveSelectedClip();
+          break;
+        case "jumpSelectedStart":
+          useProjectStore.getState().jumpPlayheadToSelectedBoundary("start");
+          break;
+        case "jumpSelectedEnd":
+          useProjectStore.getState().jumpPlayheadToSelectedBoundary("end");
           break;
         case "stepLeft":
           useProjectStore.getState().setPlayheadFrame(Math.max(0, useProjectStore.getState().playheadFrame - 1));

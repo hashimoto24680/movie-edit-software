@@ -47,6 +47,8 @@ describe("project core", () => {
     expect(resolveKeyboardShortcut({ key: "Delete" })).toBe("remove");
     expect(resolveKeyboardShortcut({ key: "Backspace" })).toBe("remove");
     expect(resolveKeyboardShortcut({ key: "Delete", shiftKey: true })).toBe("rippleRemove");
+    expect(resolveKeyboardShortcut({ key: "[" })).toBe("jumpSelectedStart");
+    expect(resolveKeyboardShortcut({ key: "]" })).toBe("jumpSelectedEnd");
     expect(resolveKeyboardShortcut({ key: "ArrowLeft" })).toBe("stepLeft");
     expect(resolveKeyboardShortcut({ key: "ArrowRight" })).toBe("stepRight");
     expect(resolveKeyboardShortcut({ key: "d", ctrlKey: true, altKey: true })).toBeNull();
@@ -669,6 +671,28 @@ describe("project core", () => {
       .project.tracks.flatMap((track) => track.clips)
       .find((candidate) => candidate.id === "cap-1");
     expect(clip?.startFrame).toBe(36);
+  });
+
+  it("jumps the playhead to the selected object boundaries", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("cap-1");
+
+    useProjectStore.getState().jumpPlayheadToSelectedBoundary("start");
+    expect(useProjectStore.getState().playheadFrame).toBe(36);
+
+    useProjectStore.getState().jumpPlayheadToSelectedBoundary("end");
+    expect(useProjectStore.getState().playheadFrame).toBe(102);
+  });
+
+  it("reports an error when jumping to selected object boundaries without a selection", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("");
+    const playheadBefore = useProjectStore.getState().playheadFrame;
+
+    useProjectStore.getState().jumpPlayheadToSelectedBoundary("start");
+
+    expect(useProjectStore.getState().lastError).toContain("再生ヘッド");
+    expect(useProjectStore.getState().playheadFrame).toBe(playheadBefore);
   });
 
   it("reports errors when moving to playhead is invalid", () => {

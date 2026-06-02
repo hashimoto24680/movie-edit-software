@@ -62,6 +62,7 @@ interface ProjectStore {
   moveClipOnTimeline: (clipId: string, targetTrackId: string, startFrame: number) => void;
   moveSelectedClipLayer: (direction: "up" | "down") => void;
   moveSelectedClipToPlayhead: () => void;
+  jumpPlayheadToSelectedBoundary: (boundary: "start" | "end") => void;
   centerSelectedOnCanvas: () => void;
   fitSelectedToCanvas: (mode: CanvasFitMode) => void;
   alignSelectedHorizontally: (align: HorizontalAlign) => void;
@@ -576,6 +577,19 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       [{ type: "moveClip", clipId: selectedClipId, targetTrackId: located.track.id, startFrame: Math.max(0, playheadFrame) }],
       "gui"
     );
+  },
+  jumpPlayheadToSelectedBoundary: (boundary) => {
+    const { project, selectedClipId } = get();
+    const selected = allClips(project).find(({ clip }) => clip.id === selectedClipId)?.clip;
+    if (!selected) {
+      set({ lastError: "再生ヘッドを移動するオブジェクトを選択してください。" });
+      return;
+    }
+    set({
+      playheadFrame: boundary === "start" ? selected.startFrame : selected.startFrame + selected.durationFrames,
+      frameSelection: { startFrame: null, endFrame: null },
+      lastError: null
+    });
   },
   centerSelectedOnCanvas: () => {
     const { selectedClipId } = get();

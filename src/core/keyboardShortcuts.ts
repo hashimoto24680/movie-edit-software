@@ -5,6 +5,8 @@ export type KeyboardShortcutAction =
   | "split"
   | "remove"
   | "rippleRemove"
+  | "jumpSelectedStart"
+  | "jumpSelectedEnd"
   | "stepLeft"
   | "stepRight";
 
@@ -30,6 +32,8 @@ export const resolveKeyboardShortcut = (input: KeyboardShortcutInput): KeyboardS
   if (command && key === "k" && !input.shiftKey) return "split";
   if (!command && key === "delete" && input.shiftKey) return "rippleRemove";
   if (!command && (key === "delete" || key === "backspace") && !input.shiftKey) return "remove";
+  if (!command && key === "[" && !input.shiftKey) return "jumpSelectedStart";
+  if (!command && key === "]" && !input.shiftKey) return "jumpSelectedEnd";
   if (!command && key === "arrowleft" && !input.shiftKey) return "stepLeft";
   if (!command && key === "arrowright" && !input.shiftKey) return "stepRight";
 

@@ -567,6 +567,26 @@ describe("project core", () => {
     expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips).some((clip) => clip.id === duplicate?.id)).toBe(false);
   });
 
+  it("duplicates multiple selected timeline objects while preserving relative timing", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipIds(["title-hero", "cap-1"]);
+
+    useProjectStore.getState().duplicateSelectedClip();
+
+    const selectedIds = useProjectStore.getState().selectedClipIds;
+    expect(selectedIds).toHaveLength(2);
+    const clips = useProjectStore.getState().project.tracks.flatMap((track) => track.clips);
+    const titleCopy = clips.find((clip) => clip.id === selectedIds[0] && clip.id !== "title-hero");
+    const captionCopy = clips.find((clip) => clip.id === selectedIds[1] && clip.id !== "cap-1");
+    expect(titleCopy?.startFrame).toBe(204);
+    expect(captionCopy?.startFrame).toBe(240);
+    expect(captionCopy && titleCopy ? captionCopy.startFrame - titleCopy.startFrame : null).toBe(36);
+    expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
+
+    useProjectStore.getState().undo();
+    expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips).some((clip) => selectedIds.includes(clip.id))).toBe(false);
+  });
+
   it("duplicates the selected timeline object at the playhead", () => {
     useProjectStore.getState().resetSample();
     useProjectStore.getState().setSelectedClipId("cap-1");

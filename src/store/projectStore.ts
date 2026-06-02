@@ -346,8 +346,60 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     if (removed) set({ selectedClipId: nextSelectedClipId, selectedClipIds: nextSelectedClipId ? [nextSelectedClipId] : [] });
   },
   duplicateSelectedClip: () => {
-    const { project, selectedClipId } = get();
-    const located = allClips(project).find(({ clip }) => clip.id === selectedClipId);
+    const { project, selectedClipId, selectedClipIds } = get();
+    const clips = allClips(project);
+    const selectedLocations = selectedClipIds
+      .map((clipId) => clips.find(({ clip }) => clip.id === clipId))
+      .filter((located): located is NonNullable<typeof located> => Boolean(located));
+    if (selectedLocations.length > 1) {
+      if (selectedLocations.some(({ track }) => track.locked)) {
+        set({ lastError: "ロック中のレイヤーでは複製できません。" });
+        return;
+      }
+      const batchId = Date.now();
+      const duplicateIds: string[] = [];
+      const sortedLocations = selectedLocations.sort(
+        (a, b) => a.clip.startFrame - b.clip.startFrame || a.clip.id.localeCompare(b.clip.id)
+      );
+      const groupStartFrame = Math.min(...sortedLocations.map(({ clip }) => clip.startFrame));
+      const groupEndFrame = Math.max(...sortedLocations.map(({ clip }) => clip.startFrame + clip.durationFrames));
+      const groupDurationFrames = Math.max(1, groupEndFrame - groupStartFrame);
+      const buildCommands = (offsetFrames: number): ProjectCommand[] =>
+        sortedLocations.map(({ track, clip }, index) => {
+          const duplicateId = `${clip.id}-copy-${batchId}-${index}`;
+          return {
+            type: "addClip",
+            trackId: track.id,
+            clip: {
+              ...structuredClone(clip),
+              id: duplicateId,
+              name: `${clip.name} copy`,
+              startFrame: clip.startFrame + offsetFrames
+            }
+          };
+        });
+      let commands: ProjectCommand[] = [];
+      for (let step = 1; step <= 50; step += 1) {
+        const candidateCommands = buildCommands(groupDurationFrames * step);
+        try {
+          applyCommandsChecked(project, candidateCommands);
+          commands = candidateCommands;
+          break;
+        } catch {
+          // Keep looking for a later free slot on every involved layer.
+        }
+      }
+      if (commands.length === 0) {
+        set({ lastError: "複製グループを置ける空き位置がありません。" });
+        return;
+      }
+      duplicateIds.push(...commands.map((command) => (command.type === "addClip" ? command.clip.id : "")));
+      const added = get().commitCommands("Duplicate selected timeline objects", commands, "gui");
+      if (added) set({ selectedClipId: duplicateIds.at(-1) ?? "", selectedClipIds: duplicateIds });
+      return;
+    }
+
+    const located = clips.find(({ clip }) => clip.id === selectedClipId);
     if (!located) {
       set({ lastError: "複製するオブジェクトを選択してください。" });
       return;

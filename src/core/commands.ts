@@ -242,6 +242,19 @@ export const applyCommand = (project: ProjectAst, command: ProjectCommand): Proj
       next.markers.sort((a, b) => a.frame - b.frame || a.id.localeCompare(b.id));
       return next;
     }
+    case "updateMarker": {
+      const next = cloneProject(project);
+      const marker = next.markers.find((candidate) => candidate.id === command.markerId);
+      if (!marker) {
+        throw new Error(`Marker not found: ${command.markerId}`);
+      }
+      marker.frame = command.frame ?? marker.frame;
+      marker.label = command.label ?? marker.label;
+      marker.color = command.color ?? marker.color;
+      marker.meta = command.meta ? { ...marker.meta, ...command.meta } : marker.meta;
+      next.markers.sort((a, b) => a.frame - b.frame || a.id.localeCompare(b.id));
+      return next;
+    }
     case "removeMarker": {
       const next = cloneProject(project);
       const markerIndex = next.markers.findIndex((marker) => marker.id === command.markerId);

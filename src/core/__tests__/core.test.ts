@@ -196,6 +196,24 @@ describe("project core", () => {
     expect(removed.markers.some((marker) => marker.id === "marker-review")).toBe(false);
   });
 
+  it("updates timeline marker fields through commands", () => {
+    const { project } = applyCommandsChecked(sampleProject, [
+      {
+        type: "updateMarker",
+        markerId: "marker-intro",
+        frame: 150,
+        label: "Edited marker",
+        color: "#ff3366"
+      }
+    ]);
+    const marker = project.markers.find((candidate) => candidate.id === "marker-intro");
+
+    expect(marker?.frame).toBe(150);
+    expect(marker?.label).toBe("Edited marker");
+    expect(marker?.color).toBe("#ff3366");
+    expect(validateProject(project).ok).toBe(true);
+  });
+
   it("updates text objects through the generic text command", () => {
     const { project } = applyCommandsChecked(sampleProject, [
       { type: "updateText", clipId: "title-hero", text: "Updated text object" }
@@ -1062,6 +1080,22 @@ describe("project core", () => {
 
     useProjectStore.getState().undo();
     expect(useProjectStore.getState().project.markers.some((marker) => marker.frame === 240)).toBe(true);
+  });
+
+  it("updates timeline markers through the store and supports undo", () => {
+    useProjectStore.getState().resetSample();
+
+    useProjectStore.getState().updateMarker("marker-intro", { label: "Cold open", color: "#00ffaa", frame: 60 });
+
+    let marker = useProjectStore.getState().project.markers.find((candidate) => candidate.id === "marker-intro");
+    expect(marker?.label).toBe("Cold open");
+    expect(marker?.color).toBe("#00ffaa");
+    expect(marker?.frame).toBe(60);
+
+    useProjectStore.getState().undo();
+    marker = useProjectStore.getState().project.markers.find((candidate) => candidate.id === "marker-intro");
+    expect(marker?.label).toBe("Intro beat");
+    expect(marker?.frame).toBe(120);
   });
 
   it("reports an error when timeline boundary navigation has no target", () => {

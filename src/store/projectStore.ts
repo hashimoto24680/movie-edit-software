@@ -47,6 +47,7 @@ interface ProjectStore {
   addMarkerAtPlayhead: () => void;
   removeMarkerAtPlayhead: () => void;
   jumpPlayheadToMarker: (direction: "previous" | "next") => void;
+  updateMarker: (markerId: string, patch: { frame?: number; label?: string; color?: string }) => void;
   setLlmText: (text: string) => void;
   submitLlmPrompt: () => Promise<void>;
   commitCommands: (label: string, commands: ProjectCommand[], source: CommandGroup["source"]) => boolean;
@@ -273,6 +274,22 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       return;
     }
     set({ playheadFrame: marker.frame, frameSelection: { startFrame: null, endFrame: null }, lastError: null });
+  },
+  updateMarker: (markerId, patch) => {
+    const safeLabel = patch.label !== undefined ? patch.label.trim() || "Marker" : undefined;
+    get().commitCommands(
+      "Update timeline marker",
+      [
+        {
+          type: "updateMarker",
+          markerId,
+          ...(patch.frame !== undefined ? { frame: Math.max(0, Math.round(patch.frame)) } : {}),
+          ...(safeLabel !== undefined ? { label: safeLabel } : {}),
+          ...(patch.color !== undefined ? { color: patch.color } : {})
+        }
+      ],
+      "gui"
+    );
   },
   setLlmText: (llmText) => set({ llmText }),
   submitLlmPrompt: async () => {

@@ -230,6 +230,14 @@ export const projectCommandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("addTitle"), trackId: z.string().min(1), clip: titleClipSchema }),
   z.object({ type: z.literal("updateRenderSettings"), render: renderSettingsSchema.partial() }),
   z.object({ type: z.literal("addMarker"), marker: timelineMarkerSchema }),
+  z.object({
+    type: z.literal("updateMarker"),
+    markerId: z.string().min(1),
+    frame: z.number().int().nonnegative().optional(),
+    label: z.string().min(1).optional(),
+    color: z.string().min(1).optional(),
+    meta: z.record(z.string(), z.unknown()).optional()
+  }),
   z.object({ type: z.literal("removeMarker"), markerId: z.string().min(1) }),
   z.object({
     type: z.literal("updateClipTransform"),

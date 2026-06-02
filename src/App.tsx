@@ -1686,12 +1686,15 @@ function LlmPanel() {
 }
 
 function ProjectPanel() {
+  const project = useProjectStore((state) => state.project);
+  const setPlayheadFrame = useProjectStore((state) => state.setPlayheadFrame);
   const renderPlan = useProjectStore((state) => state.renderPlan);
   const renderStatus = useProjectStore((state) => state.renderStatus);
   const renderWarnings = useProjectStore((state) => state.renderWarnings);
   const exportVideo = useProjectStore((state) => state.exportVideo);
   const exportProjectFileText = useProjectStore((state) => state.exportProjectFileText);
   const loadProjectFileText = useProjectStore((state) => state.loadProjectFileText);
+  const updateMarker = useProjectStore((state) => state.updateMarker);
   const lastError = useProjectStore((state) => state.lastError);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1759,6 +1762,44 @@ function ProjectPanel() {
           <Download aria-hidden />
           書き出し
         </button>
+      </div>
+      <div className="marker-list">
+        <div className="section-title">
+          <Flag aria-hidden />
+          <span>マーカー</span>
+        </div>
+        {project.markers.length === 0 ? <span className="empty-note">マーカーなし</span> : null}
+        {project.markers.map((marker) => (
+          <div className="marker-row" key={marker.id}>
+            <button
+              className="marker-jump"
+              type="button"
+              onClick={() => setPlayheadFrame(marker.frame)}
+              title={`${framesToTimecode(marker.frame, project.render.fps)}へ移動`}
+            >
+              {framesToTimecode(marker.frame, project.render.fps)}
+            </button>
+            <input
+              aria-label={`${marker.label} label`}
+              value={marker.label}
+              onChange={(event) => updateMarker(marker.id, { label: event.target.value })}
+            />
+            <input
+              aria-label={`${marker.label} seconds`}
+              type="number"
+              min={0}
+              step={1 / fpsToNumber(project.render.fps)}
+              value={framesToSeconds(marker.frame, project.render.fps)}
+              onChange={(event) => updateMarker(marker.id, { frame: secondsToFrames(Number(event.target.value), project.render.fps) })}
+            />
+            <input
+              aria-label={`${marker.label} color`}
+              type="color"
+              value={marker.color.startsWith("#") ? marker.color : "#f3d77c"}
+              onChange={(event) => updateMarker(marker.id, { color: event.target.value })}
+            />
+          </div>
+        ))}
       </div>
       {renderPlan || renderStatus ? <div className="render-status">{renderStatus ?? "書き出し設定を作成済み"}</div> : null}
     </section>

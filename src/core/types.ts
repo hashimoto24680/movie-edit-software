@@ -182,6 +182,7 @@ export type ProjectCommand =
   | { type: "addTitle"; trackId: string; clip: TitleClip }
   | { type: "updateRenderSettings"; render: Partial<RenderSettings> }
   | { type: "addMarker"; marker: TimelineMarker }
+  | { type: "updateMarker"; markerId: string; frame?: number; label?: string; color?: string; meta?: Record<string, unknown> }
   | { type: "removeMarker"; markerId: string }
   | { type: "updateClipMeta"; clipId: string; meta: Record<string, unknown> }
   | {

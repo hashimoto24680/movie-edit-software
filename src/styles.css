@@ -1153,6 +1153,57 @@ pre {
   gap: 6px;
 }
 
+.marker-list {
+  display: grid;
+  gap: 7px;
+}
+
+.empty-note {
+  color: #8f9ba6;
+  font-size: 12px;
+}
+
+.marker-row {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr) 74px 30px;
+  gap: 6px;
+  align-items: center;
+}
+
+.marker-row input {
+  width: 100%;
+  min-width: 0;
+  padding: 5px 6px;
+  border: 1px solid #303945;
+  border-radius: 5px;
+  color: #edf1f5;
+  background: #12161b;
+  font-size: 12px;
+}
+
+.marker-row input[type="color"] {
+  height: 28px;
+  padding: 2px;
+}
+
+.marker-jump {
+  min-width: 0;
+  padding: 5px 6px;
+  border: 1px solid #303945;
+  border-radius: 5px;
+  color: #cbd5df;
+  background: #12161b;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.marker-jump:hover {
+  border-color: #6f6238;
+  color: #f3d77c;
+  background: #252414;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;

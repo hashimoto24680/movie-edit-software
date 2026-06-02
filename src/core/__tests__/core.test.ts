@@ -48,6 +48,7 @@ describe("project core", () => {
     expect(resolveKeyboardShortcut({ key: "Escape" })).toBe("clearSelection");
     expect(resolveKeyboardShortcut({ key: "d", ctrlKey: true })).toBe("duplicate");
     expect(resolveKeyboardShortcut({ key: "k", ctrlKey: true })).toBe("split");
+    expect(resolveKeyboardShortcut({ key: "s" })).toBe("toggleSnapping");
     expect(resolveKeyboardShortcut({ key: "m" })).toBe("addMarker");
     expect(resolveKeyboardShortcut({ key: "m", shiftKey: true })).toBe("jumpNextMarker");
     expect(resolveKeyboardShortcut({ key: "m", ctrlKey: true, shiftKey: true })).toBe("jumpPreviousMarker");
@@ -63,6 +64,7 @@ describe("project core", () => {
     expect(resolveKeyboardShortcut({ key: "ArrowLeft", shiftKey: true })).toBe("nudgeSelectedLeft");
     expect(resolveKeyboardShortcut({ key: "ArrowRight", shiftKey: true })).toBe("nudgeSelectedRight");
     expect(resolveKeyboardShortcut({ key: "d", ctrlKey: true, altKey: true })).toBeNull();
+    expect(resolveKeyboardShortcut({ key: "s", altKey: true })).toBeNull();
     expect(resolveKeyboardShortcut({ key: "Delete", altKey: true })).toBeNull();
     expect(resolveKeyboardShortcut({ key: "a" })).toBeNull();
   });

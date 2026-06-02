@@ -1010,7 +1010,7 @@ function Timeline() {
           </span>
           <button
             className={`icon-button ${timelineSnappingEnabled ? "active" : ""}`}
-            title={timelineSnappingEnabled ? "スナップON" : "スナップOFF"}
+            title={timelineSnappingEnabled ? "スナップON (S)" : "スナップOFF (S)"}
             onClick={toggleTimelineSnapping}
           >
             <Magnet aria-hidden />
@@ -1897,6 +1897,9 @@ export default function App() {
           break;
         case "rippleRemove":
           useProjectStore.getState().rippleRemoveSelectedClip();
+          break;
+        case "toggleSnapping":
+          useProjectStore.getState().toggleTimelineSnapping();
           break;
         case "addMarker":
           useProjectStore.getState().addMarkerAtPlayhead();

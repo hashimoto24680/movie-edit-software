@@ -7,6 +7,7 @@ export type KeyboardShortcutAction =
   | "split"
   | "remove"
   | "rippleRemove"
+  | "toggleSnapping"
   | "addMarker"
   | "jumpPreviousMarker"
   | "jumpNextMarker"
@@ -42,6 +43,7 @@ export const resolveKeyboardShortcut = (input: KeyboardShortcutInput): KeyboardS
   if (command && key === "k" && !input.shiftKey) return "split";
   if (command && key === "m" && input.shiftKey) return "jumpPreviousMarker";
   if (!command && key === "escape" && !input.shiftKey) return "clearSelection";
+  if (!command && key === "s" && !input.shiftKey) return "toggleSnapping";
   if (!command && key === "delete" && input.shiftKey) return "rippleRemove";
   if (!command && (key === "delete" || key === "backspace") && !input.shiftKey) return "remove";
   if (!command && key === "m" && input.shiftKey) return "jumpNextMarker";

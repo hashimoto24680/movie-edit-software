@@ -762,6 +762,26 @@ function Timeline() {
                     </button>
                   );
                 })}
+                {track.clips
+                  .filter(
+                    (clip) =>
+                      selectedClipId === clip.id &&
+                      (timelineDrag?.clipId !== clip.id || timelineDrag.targetTrackId === track.id)
+                  )
+                  .map((clip) => {
+                    const isDragging = timelineDrag?.clipId === clip.id;
+                    const displayFrame = isDragging ? timelineDrag.frame : clip.startFrame;
+                    const left = frameToPercent(displayFrame);
+                    const width = Math.max(0.15, (clip.durationFrames / timelineFrameRange) * 100);
+                    return (
+                      <span
+                        aria-hidden="true"
+                        className="clip-selection-outline"
+                        key={`${clip.id}-selection`}
+                        style={{ left: `${left}%`, width: `${width}%` }}
+                      />
+                    );
+                  })}
                 {timelineDrag &&
                 timelineDrag.targetTrackId === track.id &&
                 !track.clips.some((clip) => clip.id === timelineDrag.clipId)
@@ -772,14 +792,21 @@ function Timeline() {
                       const left = frameToPercent(timelineDrag.frame);
                       const width = Math.max(0.15, (dragged.durationFrames / timelineFrameRange) * 100);
                       return (
-                        <button
-                          className={`clip-block ${kind} selected dragging`}
-                          style={{ left: `${left}%`, width: `${width}%` }}
-                          title={dragged.id}
-                        >
-                          <span className="clip-kind">{kind[0].toUpperCase()}</span>
-                          <span>{dragged.name}</span>
-                        </button>
+                        <>
+                          <button
+                            className={`clip-block ${kind} selected dragging`}
+                            style={{ left: `${left}%`, width: `${width}%` }}
+                            title={dragged.id}
+                          >
+                            <span className="clip-kind">{kind[0].toUpperCase()}</span>
+                            <span>{dragged.name}</span>
+                          </button>
+                          <span
+                            aria-hidden="true"
+                            className="clip-selection-outline"
+                            style={{ left: `${left}%`, width: `${width}%` }}
+                          />
+                        </>
                       );
                     })()
                   : null}

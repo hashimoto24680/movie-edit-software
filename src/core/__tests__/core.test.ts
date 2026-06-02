@@ -30,6 +30,7 @@ describe("project core", () => {
 
     expect(migrated.schemaVersion).toBe(1);
     expect(migrated.tracks[0].effects).toEqual([]);
+    expect(migrated.markers).toEqual([]);
     expect(validateProject(migrated).ok).toBe(true);
   });
 
@@ -172,6 +173,27 @@ describe("project core", () => {
     expect(clip && "transform" in clip && clip.transform.position.mode === "static" ? clip.transform.position.value.x : null).toBe(0.25);
     expect(clip && "transform" in clip && clip.transform.scale.mode === "static" ? clip.transform.scale.value.x : null).toBe(0.8);
     expect(clip && "transform" in clip && clip.transform.opacity.mode === "static" ? clip.transform.opacity.value : null).toBe(0.75);
+  });
+
+  it("stores timeline markers through commands", () => {
+    const { project } = applyCommandsChecked(sampleProject, [
+      {
+        type: "addMarker",
+        marker: {
+          id: "marker-review",
+          frame: 180,
+          label: "Review point",
+          color: "#6ee7f2",
+          meta: {}
+        }
+      }
+    ]);
+
+    expect(project.markers.map((marker) => marker.id)).toContain("marker-review");
+    expect(validateProject(project).ok).toBe(true);
+
+    const removed = applyCommandsChecked(project, [{ type: "removeMarker", markerId: "marker-review" }]).project;
+    expect(removed.markers.some((marker) => marker.id === "marker-review")).toBe(false);
   });
 
   it("updates text objects through the generic text command", () => {
@@ -1018,6 +1040,28 @@ describe("project core", () => {
 
     useProjectStore.getState().jumpPlayheadToTimelineBoundary("next");
     expect(useProjectStore.getState().playheadFrame).toBe(102);
+  });
+
+  it("adds, removes, and jumps between timeline markers through the store", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setPlayheadFrame(240);
+
+    useProjectStore.getState().addMarkerAtPlayhead();
+
+    expect(useProjectStore.getState().project.markers.some((marker) => marker.frame === 240)).toBe(true);
+
+    useProjectStore.getState().setPlayheadFrame(0);
+    useProjectStore.getState().jumpPlayheadToMarker("next");
+    expect(useProjectStore.getState().playheadFrame).toBe(120);
+
+    useProjectStore.getState().jumpPlayheadToMarker("next");
+    expect(useProjectStore.getState().playheadFrame).toBe(240);
+
+    useProjectStore.getState().removeMarkerAtPlayhead();
+    expect(useProjectStore.getState().project.markers.some((marker) => marker.frame === 240)).toBe(false);
+
+    useProjectStore.getState().undo();
+    expect(useProjectStore.getState().project.markers.some((marker) => marker.frame === 240)).toBe(true);
   });
 
   it("reports an error when timeline boundary navigation has no target", () => {

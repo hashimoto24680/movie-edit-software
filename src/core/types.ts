@@ -140,6 +140,14 @@ export interface RenderSettings {
   background: string;
 }
 
+export interface TimelineMarker {
+  id: string;
+  frame: number;
+  label: string;
+  color: string;
+  meta: Record<string, unknown>;
+}
+
 export interface ProjectAst {
   schemaVersion: number;
   id: string;
@@ -148,6 +156,7 @@ export interface ProjectAst {
   assets: Asset[];
   tracks: Track[];
   compositions: Composition[];
+  markers: TimelineMarker[];
   meta: Record<string, unknown>;
 }
 
@@ -172,6 +181,8 @@ export type ProjectCommand =
   | { type: "setVolume"; clipId: string; volume: number }
   | { type: "addTitle"; trackId: string; clip: TitleClip }
   | { type: "updateRenderSettings"; render: Partial<RenderSettings> }
+  | { type: "addMarker"; marker: TimelineMarker }
+  | { type: "removeMarker"; markerId: string }
   | { type: "updateClipMeta"; clipId: string; meta: Record<string, unknown> }
   | {
       type: "updateClipTransform";

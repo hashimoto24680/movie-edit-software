@@ -106,6 +106,18 @@ export const migrateProject = (input: unknown): ProjectAst => {
         : [],
       tracks: Array.isArray(raw.tracks) ? raw.tracks.map((track) => normalizeTrack(ensureRecord(track))) : [],
       compositions: Array.isArray(raw.compositions) ? raw.compositions : [],
+      markers: Array.isArray(raw.markers)
+        ? raw.markers.map((marker) => {
+            const record = ensureRecord(marker);
+            return {
+              id: String(record.id ?? crypto.randomUUID()),
+              frame: Number(record.frame ?? record.startFrame ?? 0),
+              label: String(record.label ?? "Marker"),
+              color: String(record.color ?? "#f3d77c"),
+              meta: ensureRecord(record.meta)
+            };
+          })
+        : [],
       meta: ensureRecord(raw.meta)
     };
 

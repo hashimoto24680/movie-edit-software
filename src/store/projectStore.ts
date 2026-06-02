@@ -44,6 +44,9 @@ interface ProjectStore {
   clearSelection: () => void;
   setPlayheadFrame: (frame: number) => void;
   selectTimelineFrame: (frame: number) => void;
+  addMarkerAtPlayhead: () => void;
+  removeMarkerAtPlayhead: () => void;
+  jumpPlayheadToMarker: (direction: "previous" | "next") => void;
   setLlmText: (text: string) => void;
   submitLlmPrompt: () => Promise<void>;
   commitCommands: (label: string, commands: ProjectCommand[], source: CommandGroup["source"]) => boolean;
@@ -223,6 +226,53 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       },
       playheadFrame: frame
     });
+  },
+  addMarkerAtPlayhead: () => {
+    const { project, playheadFrame } = get();
+    const frame = Math.max(0, Math.round(playheadFrame));
+    if (project.markers.some((marker) => marker.frame === frame)) {
+      set({ lastError: "この位置にはすでにマーカーがあります。" });
+      return;
+    }
+    get().commitCommands(
+      "Add timeline marker",
+      [
+        {
+          type: "addMarker",
+          marker: {
+            id: `marker-${frame}-${Date.now()}`,
+            frame,
+            label: `Marker ${project.markers.length + 1}`,
+            color: "#f3d77c",
+            meta: {}
+          }
+        }
+      ],
+      "gui"
+    );
+  },
+  removeMarkerAtPlayhead: () => {
+    const { project, playheadFrame } = get();
+    const frame = Math.max(0, Math.round(playheadFrame));
+    const marker = project.markers.find((candidate) => candidate.frame === frame);
+    if (!marker) {
+      set({ lastError: "現在位置に削除できるマーカーがありません。" });
+      return;
+    }
+    get().commitCommands("Remove timeline marker", [{ type: "removeMarker", markerId: marker.id }], "gui");
+  },
+  jumpPlayheadToMarker: (direction) => {
+    const { project, playheadFrame } = get();
+    const sortedMarkers = [...project.markers].sort((a, b) => a.frame - b.frame || a.id.localeCompare(b.id));
+    const marker =
+      direction === "previous"
+        ? [...sortedMarkers].reverse().find((candidate) => candidate.frame < playheadFrame)
+        : sortedMarkers.find((candidate) => candidate.frame > playheadFrame);
+    if (!marker) {
+      set({ lastError: direction === "previous" ? "前のマーカーがありません。" : "次のマーカーがありません。" });
+      return;
+    }
+    set({ playheadFrame: marker.frame, frameSelection: { startFrame: null, endFrame: null }, lastError: null });
   },
   setLlmText: (llmText) => set({ llmText }),
   submitLlmPrompt: async () => {

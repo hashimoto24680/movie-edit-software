@@ -6,6 +6,8 @@ import {
   Download,
   FileVideo,
   Film,
+  Flag,
+  FlagOff,
   History,
   Layers,
   Lock,
@@ -38,6 +40,7 @@ import {
   X
 } from "lucide-react";
 import {
+  type CSSProperties as ReactCSSProperties,
   type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
@@ -720,6 +723,9 @@ function Timeline() {
   const project = useProjectStore((state) => state.project);
   const playheadFrame = useProjectStore((state) => state.playheadFrame);
   const setPlayheadFrame = useProjectStore((state) => state.setPlayheadFrame);
+  const addMarkerAtPlayhead = useProjectStore((state) => state.addMarkerAtPlayhead);
+  const removeMarkerAtPlayhead = useProjectStore((state) => state.removeMarkerAtPlayhead);
+  const jumpPlayheadToMarker = useProjectStore((state) => state.jumpPlayheadToMarker);
   const selectedClipId = useProjectStore((state) => state.selectedClipId);
   const selectedClipIds = useProjectStore((state) => state.selectedClipIds);
   const setSelectedClipId = useProjectStore((state) => state.setSelectedClipId);
@@ -992,6 +998,18 @@ function Timeline() {
             <Clock aria-hidden />
             {framesToTimecode(playheadFrame, project.render.fps)}
           </span>
+          <button className="icon-button" title="現在位置にマーカーを追加" onClick={addMarkerAtPlayhead}>
+            <Flag aria-hidden />
+          </button>
+          <button className="icon-button" title="現在位置のマーカーを削除" onClick={removeMarkerAtPlayhead}>
+            <FlagOff aria-hidden />
+          </button>
+          <button className="icon-button" title="前のマーカーへ移動" onClick={() => jumpPlayheadToMarker("previous")}>
+            <Rewind aria-hidden />
+          </button>
+          <button className="icon-button" title="次のマーカーへ移動" onClick={() => jumpPlayheadToMarker("next")}>
+            <FastForward aria-hidden />
+          </button>
           <label className="timeline-zoom">
             <span>縮尺</span>
             <input
@@ -1086,6 +1104,15 @@ function Timeline() {
             <span className="ruler-label middle">{framesToTimecode(Math.round(timelineFrameRange / 2), project.render.fps)}</span>
             <span className="ruler-label end">{framesToTimecode(timelineFrameRange, project.render.fps)}</span>
           </div>
+          {project.markers.map((marker) => (
+            <span
+              aria-hidden="true"
+              className="timeline-marker-line"
+              key={marker.id}
+              style={{ left: `${frameToCanvasX(marker.frame)}px`, "--marker-color": marker.color } as ReactCSSProperties}
+              title={marker.label}
+            />
+          ))}
           <span className="timeline-playhead-line" style={{ left: `${timelinePlayheadLeft}px` }} />
           {snapGuideLeft !== null ? <span className="timeline-snap-line" style={{ left: `${snapGuideLeft}px` }} /> : null}
           {selectionRectStyle ? <span className="timeline-selection-rect" style={selectionRectStyle} /> : null}

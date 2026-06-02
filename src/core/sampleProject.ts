@@ -126,6 +126,15 @@ export const sampleProject: ProjectAst = {
     track("layer-5", "layer", "レイヤー5")
   ],
   compositions: [],
+  markers: [
+    {
+      id: "marker-intro",
+      frame: frames(4),
+      label: "Intro beat",
+      color: "#f3d77c",
+      meta: {}
+    }
+  ],
   meta: {
     roadmap: ["multi-track", "keyframes", "effect-nodes", "nested-compositions", "renderer-interface"]
   }

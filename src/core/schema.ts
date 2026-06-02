@@ -156,6 +156,14 @@ export const renderSettingsSchema = z.object({
   background: z.string().min(1)
 });
 
+export const timelineMarkerSchema = z.object({
+  id: z.string().min(1),
+  frame: z.number().int().nonnegative(),
+  label: z.string().min(1),
+  color: z.string().min(1),
+  meta: z.record(z.string(), z.unknown())
+});
+
 export const projectAstSchema = z.object({
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),
   id: z.string().min(1),
@@ -164,6 +172,7 @@ export const projectAstSchema = z.object({
   assets: z.array(assetSchema),
   tracks: z.array(trackSchema),
   compositions: z.array(compositionSchema),
+  markers: z.array(timelineMarkerSchema).default([]),
   meta: z.record(z.string(), z.unknown())
 });
 
@@ -220,6 +229,8 @@ export const projectCommandSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("addTitle"), trackId: z.string().min(1), clip: titleClipSchema }),
   z.object({ type: z.literal("updateRenderSettings"), render: renderSettingsSchema.partial() }),
+  z.object({ type: z.literal("addMarker"), marker: timelineMarkerSchema }),
+  z.object({ type: z.literal("removeMarker"), markerId: z.string().min(1) }),
   z.object({
     type: z.literal("updateClipTransform"),
     clipId: z.string().min(1),

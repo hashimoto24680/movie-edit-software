@@ -71,6 +71,10 @@ export const validateProject = (project: unknown): ValidationResult => {
     addId(asset.id, `asset ${asset.name}`);
   }
 
+  for (const marker of ast.markers) {
+    addId(marker.id, `marker ${marker.label}`);
+  }
+
   for (const track of ast.tracks) {
     addId(track.id, `track ${track.name}`);
     collectEffectWarnings(track.effects, track.id, warnings);

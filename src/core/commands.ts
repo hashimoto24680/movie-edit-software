@@ -233,6 +233,24 @@ export const applyCommand = (project: ProjectAst, command: ProjectCommand): Proj
       };
       return next;
     }
+    case "addMarker": {
+      const next = cloneProject(project);
+      if (next.markers.some((marker) => marker.id === command.marker.id)) {
+        throw new Error(`Marker already exists: ${command.marker.id}`);
+      }
+      next.markers.push(command.marker);
+      next.markers.sort((a, b) => a.frame - b.frame || a.id.localeCompare(b.id));
+      return next;
+    }
+    case "removeMarker": {
+      const next = cloneProject(project);
+      const markerIndex = next.markers.findIndex((marker) => marker.id === command.markerId);
+      if (markerIndex < 0) {
+        throw new Error(`Marker not found: ${command.markerId}`);
+      }
+      next.markers.splice(markerIndex, 1);
+      return next;
+    }
     case "updateClipMeta":
       return replaceClip(project, command.clipId, (clip) => ({
         ...clip,

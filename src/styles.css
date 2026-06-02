@@ -511,6 +511,8 @@ input[type="range"] {
   --track-label-width: 110px;
   --track-gap: 6px;
   --timeline-lane-offset: calc(var(--track-label-width) + var(--track-gap));
+  position: relative;
+  z-index: 2;
   padding: 10px;
   min-width: 0;
 }
@@ -534,10 +536,11 @@ input[type="range"] {
 }
 
 .timeline-controls {
-  display: grid;
-  grid-template-columns: auto auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .timeline-time {
@@ -694,7 +697,8 @@ input[type="range"] {
 }
 
 .timeline-playhead-line,
-.timeline-snap-line {
+.timeline-snap-line,
+.timeline-marker-line {
   position: absolute;
   z-index: 6;
   width: 2px;
@@ -728,6 +732,26 @@ input[type="range"] {
   z-index: 10;
   background: #6ee7f2;
   box-shadow: 0 0 0 1px rgba(110, 231, 242, 0.28);
+}
+
+.timeline-marker-line {
+  top: 0;
+  bottom: 0;
+  z-index: 7;
+  background: color-mix(in srgb, var(--marker-color, #f3d77c) 78%, transparent);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+.timeline-marker-line::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 9px;
+  height: 12px;
+  background: var(--marker-color, #f3d77c);
+  clip-path: polygon(0 0, 100% 0, 100% 70%, 0 45%);
+  transform: translateX(-50%);
 }
 
 .timeline-selection-rect {

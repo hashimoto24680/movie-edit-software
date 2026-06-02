@@ -588,6 +588,12 @@ input[type="range"] {
   background: #252414;
 }
 
+.track-control-button.solo {
+  color: #9fe1ff;
+  border-color: #43708a;
+  background: #142431;
+}
+
 .track-lane {
   position: relative;
   min-height: 34px;
@@ -612,6 +618,12 @@ input[type="range"] {
 .track-row.muted .clip-block {
   filter: saturate(0.35);
   opacity: 0.58;
+}
+
+.track-row.solo .track-head {
+  color: #d9f4ff;
+  border: 1px solid #43708a;
+  background: #172838;
 }
 
 .timeline-playhead-line,

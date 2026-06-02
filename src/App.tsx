@@ -8,6 +8,7 @@ import {
   Lock,
   Monitor,
   PanelRight,
+  Radio,
   RotateCcw,
   RotateCw,
   Save,
@@ -26,6 +27,7 @@ import {
 } from "lucide-react";
 import { type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { fpsToNumber, framesToSeconds, framesToTimecode, secondsToFrames } from "./core/time";
+import { hasSoloTracks, isTrackAudibleOrVisible } from "./core/trackVisibility";
 import { allClips } from "./core/validation";
 import { useProjectStore } from "./store/projectStore";
 import type { AssetKind, Clip, Point2D, ProjectAst, StaticOrKeyframed, Track } from "./core/types";
@@ -46,11 +48,13 @@ const timelineBoundaryFrames = (project: ProjectAst, excludedClipId?: string): n
     )
   ].filter((frame, index, frames) => frames.indexOf(frame) === index);
 
-const activeCanvasClips = (project: ProjectAst, frame: number): Array<{ track: Track; clip: Clip }> =>
-  allClips(project).filter(({ track, clip }) => {
-    if (track.kind === "audio" || track.muted) return false;
+const activeCanvasClips = (project: ProjectAst, frame: number): Array<{ track: Track; clip: Clip }> => {
+  const soloTracksExist = hasSoloTracks(project);
+  return allClips(project).filter(({ track, clip }) => {
+    if (track.kind === "audio" || !isTrackAudibleOrVisible(project, track, soloTracksExist)) return false;
     return frame >= clip.startFrame && frame <= clip.startFrame + clip.durationFrames;
   });
+};
 
 const staticNumberValue = (value: StaticOrKeyframed<number>, fallback: number): number =>
   value.mode === "static" ? value.value : value.keyframes[0]?.value ?? fallback;
@@ -519,6 +523,7 @@ function Timeline() {
   const selectTimelineFrame = useProjectStore((state) => state.selectTimelineFrame);
   const toggleTrackLocked = useProjectStore((state) => state.toggleTrackLocked);
   const toggleTrackMuted = useProjectStore((state) => state.toggleTrackMuted);
+  const toggleTrackSolo = useProjectStore((state) => state.toggleTrackSolo);
   const contentEndFrame = timelineEnd(project);
   const fps = fpsToNumber(project.render.fps);
   const zoomedOutVisibleFrames = Math.max(1, Math.round(4 * 60 * 60 * fps));
@@ -714,7 +719,12 @@ function Timeline() {
           <span className="timeline-playhead-line" style={{ left: `${timelinePlayheadLeft}px` }} />
           {snapGuideLeft !== null ? <span className="timeline-snap-line" style={{ left: `${snapGuideLeft}px` }} /> : null}
           {project.tracks.map((track) => (
-            <div className={`track-row ${track.locked ? "locked" : ""} ${track.muted ? "muted" : ""}`} key={track.id}>
+            <div
+              className={`track-row ${track.locked ? "locked" : ""} ${track.muted ? "muted" : ""} ${
+                track.solo ? "solo" : ""
+              }`}
+              key={track.id}
+            >
               <div className="track-head">
                 <span>{displayTrackName(track.name)}</span>
                 <div className="track-controls" aria-label={`${displayTrackName(track.name)} controls`}>
@@ -741,6 +751,18 @@ function Timeline() {
                     aria-label={track.muted ? "ミュート解除" : "レイヤーをミュート"}
                   >
                     {track.muted ? <VolumeX size={13} /> : <Volume2 size={13} />}
+                  </button>
+                  <button
+                    className={`track-control-button ${track.solo ? "active solo" : ""}`}
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleTrackSolo(track.id);
+                    }}
+                    title={track.solo ? "ソロ解除" : "レイヤーをソロ"}
+                    aria-label={track.solo ? "ソロ解除" : "レイヤーをソロ"}
+                  >
+                    <Radio size={13} />
                   </button>
                 </div>
               </div>

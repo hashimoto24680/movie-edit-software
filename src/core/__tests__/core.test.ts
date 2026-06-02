@@ -130,13 +130,31 @@ describe("project core", () => {
 
   it("updates layer lock and mute state through commands", () => {
     const { project } = applyCommandsChecked(sampleProject, [
-      { type: "updateTrackState", trackId: "layer-1", locked: true, muted: true }
+      { type: "updateTrackState", trackId: "layer-1", locked: true, muted: true, solo: true }
     ]);
     const layer = project.tracks.find((track) => track.id === "layer-1");
 
     expect(layer?.locked).toBe(true);
     expect(layer?.muted).toBe(true);
+    expect(layer?.solo).toBe(true);
     expect(validateProject(project).ok).toBe(true);
+  });
+
+  it("filters muted and soloed layers from the ffmpeg manifest", () => {
+    const mutedProject = applyCommandsChecked(sampleProject, [
+      { type: "updateTrackState", trackId: "layer-1", muted: true }
+    ]).project;
+    const mutedPlan = ffmpegRenderer.createManifest({ project: mutedProject, outputPath: "out.mp4" });
+
+    expect(mutedPlan.manifest.segments.some((segment) => segment.trackId === "layer-1")).toBe(false);
+    expect(mutedPlan.manifest.segments.some((segment) => segment.trackId === "layer-2")).toBe(true);
+
+    const soloProject = applyCommandsChecked(sampleProject, [
+      { type: "updateTrackState", trackId: "layer-2", solo: true }
+    ]).project;
+    const soloPlan = ffmpegRenderer.createManifest({ project: soloProject, outputPath: "out.mp4" });
+
+    expect(soloPlan.manifest.segments.every((segment) => segment.trackId === "layer-2")).toBe(true);
   });
 
   it("rejects edits on locked layers through the reducer", () => {
@@ -370,25 +388,29 @@ describe("project core", () => {
     expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
   });
 
-  it("toggles layer lock and mute through the store history", () => {
+  it("toggles layer lock, mute, and solo through the store history", () => {
     useProjectStore.getState().resetSample();
 
     useProjectStore.getState().toggleTrackLocked("layer-1");
     useProjectStore.getState().toggleTrackMuted("layer-1");
+    useProjectStore.getState().toggleTrackSolo("layer-1");
 
     let layer = useProjectStore.getState().project.tracks.find((track) => track.id === "layer-1");
     expect(layer?.locked).toBe(true);
     expect(layer?.muted).toBe(true);
+    expect(layer?.solo).toBe(true);
 
     useProjectStore.getState().undo();
     layer = useProjectStore.getState().project.tracks.find((track) => track.id === "layer-1");
     expect(layer?.locked).toBe(true);
-    expect(layer?.muted).toBe(false);
+    expect(layer?.muted).toBe(true);
+    expect(layer?.solo).toBe(false);
 
     useProjectStore.getState().redo();
     layer = useProjectStore.getState().project.tracks.find((track) => track.id === "layer-1");
     expect(layer?.locked).toBe(true);
     expect(layer?.muted).toBe(true);
+    expect(layer?.solo).toBe(true);
   });
 
   it("runs GUI and LLM operations through the same reducer contract", () => {

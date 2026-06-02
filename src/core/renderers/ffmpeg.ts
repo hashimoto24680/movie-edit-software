@@ -1,4 +1,5 @@
 import { framesToTimecode } from "../time";
+import { hasSoloTracks, isTrackAudibleOrVisible } from "../trackVisibility";
 import type { Clip, ProjectAst, Track } from "../types";
 import type { Renderer, RenderRequest } from "./types";
 
@@ -58,8 +59,10 @@ const collectInputs = (project: ProjectAst): FfmpegInput[] => {
   return [...inputs.values()].sort((a, b) => a.assetId.localeCompare(b.assetId));
 };
 
-const collectSegments = (project: ProjectAst): FfmpegSegment[] =>
-  [...project.tracks]
+const collectSegments = (project: ProjectAst): FfmpegSegment[] => {
+  const soloTracksExist = hasSoloTracks(project);
+  return [...project.tracks]
+    .filter((track) => isTrackAudibleOrVisible(project, track, soloTracksExist))
     .sort((a, b) => trackOrder(a) - trackOrder(b) || a.id.localeCompare(b.id))
     .flatMap((track) =>
       [...track.clips]
@@ -75,6 +78,7 @@ const collectSegments = (project: ProjectAst): FfmpegSegment[] =>
           text: "text" in clip ? clip.text : undefined
         }))
     );
+};
 
 const collectWarnings = (project: ProjectAst): string[] => {
   const warnings: string[] = [];

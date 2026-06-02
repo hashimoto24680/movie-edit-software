@@ -53,6 +53,7 @@ interface ProjectStore {
   updateCanvasSize: (width: number, height: number) => void;
   toggleTrackLocked: (trackId: string) => void;
   toggleTrackMuted: (trackId: string) => void;
+  toggleTrackSolo: (trackId: string) => void;
   moveClipOnTimeline: (clipId: string, targetTrackId: string, startFrame: number) => void;
   updateSelectedTransform: (patch: {
     position?: Point2D;
@@ -421,6 +422,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     const track = get().project.tracks.find((candidate) => candidate.id === trackId);
     if (!track) return;
     get().commitCommands("Toggle layer mute", [{ type: "updateTrackState", trackId, muted: !track.muted }], "gui");
+  },
+  toggleTrackSolo: (trackId) => {
+    const track = get().project.tracks.find((candidate) => candidate.id === trackId);
+    if (!track) return;
+    get().commitCommands("Toggle layer solo", [{ type: "updateTrackState", trackId, solo: !track.solo }], "gui");
   },
   moveClipOnTimeline: (clipId, targetTrackId, startFrame) => {
     const nextStartFrame = Math.max(0, Math.round(startFrame));

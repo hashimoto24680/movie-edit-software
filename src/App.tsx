@@ -37,7 +37,15 @@ import {
   Wand2,
   X
 } from "lucide-react";
-import { type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  type DragEvent as ReactDragEvent,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState
+} from "react";
 import { resolveKeyboardShortcut } from "./core/keyboardShortcuts";
 import { calculateResizeScale } from "./core/previewResize";
 import { calculateRotation } from "./core/previewRotate";
@@ -783,6 +791,34 @@ function Timeline() {
   const snapPlayheadFrame = (frame: number): number =>
     nearestSnapFrame(frame, snapFrames, snapThresholdFrames).frame;
 
+  const selectNearestClipInTrack = (event: ReactMouseEvent<HTMLElement>, track: Track) => {
+    if ((event.target as HTMLElement).closest(".clip-block")) return;
+    const frame = frameFromClientX(event.clientX, event.currentTarget, timelineFrameRange);
+    const thresholdFrames = Math.max(snapThresholdFrames, Math.round((timelineFrameRange / laneWidth) * 8));
+    const candidates = track.clips
+      .map((clip) => {
+        const endFrame = clip.startFrame + clip.durationFrames;
+        const distance =
+          frame >= clip.startFrame && frame <= endFrame
+            ? 0
+            : Math.min(Math.abs(frame - clip.startFrame), Math.abs(frame - endFrame));
+        return { clip, distance };
+      })
+      .filter(({ distance }) => distance <= thresholdFrames)
+      .sort((a, b) => a.distance - b.distance || a.clip.startFrame - b.clip.startFrame)
+      .map(({ clip }) => clip);
+    const currentCandidateIndex = candidates.findIndex((clip) => clip.id === selectedClipId);
+    const nearest = event.shiftKey
+      ? candidates.find((clip) => !selectedClipIds.includes(clip.id)) ?? candidates[0]
+      : candidates[currentCandidateIndex >= 0 ? (currentCandidateIndex + 1) % candidates.length : 0];
+    if (!nearest) return;
+    if (event.shiftKey) {
+      toggleSelectedClipId(nearest.id);
+      return;
+    }
+    setSelectedClipId(nearest.id);
+  };
+
   const previewTrim = (
     trim: NonNullable<typeof timelineTrim>,
     frame: number
@@ -1027,6 +1063,7 @@ function Timeline() {
               <div
                 className="track-lane layer"
                 data-track-id={track.id}
+                onClick={(event) => selectNearestClipInTrack(event, track)}
               >
                 {track.clips.map((clip) => {
                   const isDragging = timelineDrag?.clipId === clip.id;

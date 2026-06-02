@@ -778,8 +778,8 @@ input[type="range"] {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  min-width: 34px;
-  padding: 0 8px;
+  min-width: 0;
+  padding: 0;
   border: 1px solid color-mix(in srgb, var(--clip-color) 70%, white);
   border-radius: 0;
   color: #ffffff;
@@ -793,6 +793,7 @@ input[type="range"] {
   display: inline-grid;
   place-items: center;
   flex: 0 0 auto;
+  margin-left: 4px;
   width: 16px;
   height: 16px;
   border-radius: 0;
@@ -816,6 +817,7 @@ input[type="range"] {
 }
 
 .clip-block span {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -851,7 +853,7 @@ input[type="range"] {
   top: 2px;
   bottom: 2px;
   box-sizing: border-box;
-  min-width: 34px;
+  min-width: 0;
   z-index: 100;
   border: 2px solid #f3d77c;
   pointer-events: none;

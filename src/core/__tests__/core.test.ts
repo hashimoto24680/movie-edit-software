@@ -606,6 +606,24 @@ describe("project core", () => {
     expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips).some((clip) => clip.id === duplicate?.id)).toBe(false);
   });
 
+  it("duplicates multiple selected timeline objects at the playhead", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipIds(["title-hero", "cap-1"]);
+    useProjectStore.getState().setPlayheadFrame(300);
+
+    useProjectStore.getState().duplicateSelectedClipAtPlayhead();
+
+    const selectedIds = useProjectStore.getState().selectedClipIds;
+    expect(selectedIds).toHaveLength(2);
+    const clips = useProjectStore.getState().project.tracks.flatMap((track) => track.clips);
+    const titleCopy = clips.find((clip) => clip.id === selectedIds[0] && clip.id !== "title-hero");
+    const captionCopy = clips.find((clip) => clip.id === selectedIds[1] && clip.id !== "cap-1");
+    expect(titleCopy?.startFrame).toBe(300);
+    expect(captionCopy?.startFrame).toBe(336);
+    expect(captionCopy && titleCopy ? captionCopy.startFrame - titleCopy.startFrame : null).toBe(36);
+    expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
+  });
+
   it("reports an error when duplicating at the playhead would overlap", () => {
     useProjectStore.getState().resetSample();
     useProjectStore.getState().setSelectedClipId("cap-1");

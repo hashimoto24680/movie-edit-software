@@ -429,8 +429,42 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     if (added) set({ selectedClipId: duplicateId, selectedClipIds: [duplicateId] });
   },
   duplicateSelectedClipAtPlayhead: () => {
-    const { project, selectedClipId, playheadFrame } = get();
-    const located = allClips(project).find(({ clip }) => clip.id === selectedClipId);
+    const { project, selectedClipId, selectedClipIds, playheadFrame } = get();
+    const clips = allClips(project);
+    const selectedLocations = selectedClipIds
+      .map((clipId) => clips.find(({ clip }) => clip.id === clipId))
+      .filter((located): located is NonNullable<typeof located> => Boolean(located));
+    if (selectedLocations.length > 1) {
+      if (selectedLocations.some(({ track }) => track.locked)) {
+        set({ lastError: "ロック中のレイヤーでは複製できません。" });
+        return;
+      }
+      const batchId = Date.now();
+      const sortedLocations = selectedLocations.sort(
+        (a, b) => a.clip.startFrame - b.clip.startFrame || a.clip.id.localeCompare(b.clip.id)
+      );
+      const groupStartFrame = Math.min(...sortedLocations.map(({ clip }) => clip.startFrame));
+      const duplicateIds: string[] = [];
+      const commands: ProjectCommand[] = sortedLocations.map(({ track, clip }, index) => {
+        const duplicateId = `${clip.id}-copy-${batchId}-${index}`;
+        duplicateIds.push(duplicateId);
+        return {
+          type: "addClip",
+          trackId: track.id,
+          clip: {
+            ...structuredClone(clip),
+            id: duplicateId,
+            name: `${clip.name} copy`,
+            startFrame: Math.max(0, playheadFrame) + (clip.startFrame - groupStartFrame)
+          }
+        };
+      });
+      const added = get().commitCommands("Duplicate selected timeline objects at playhead", commands, "gui");
+      if (added) set({ selectedClipId: duplicateIds.at(-1) ?? "", selectedClipIds: duplicateIds });
+      return;
+    }
+
+    const located = clips.find(({ clip }) => clip.id === selectedClipId);
     if (!located) {
       set({ lastError: "再生ヘッドへ複製するオブジェクトを選択してください。" });
       return;

@@ -10,7 +10,9 @@ export type KeyboardShortcutAction =
   | "jumpPreviousBoundary"
   | "jumpNextBoundary"
   | "stepLeft"
-  | "stepRight";
+  | "stepRight"
+  | "nudgeSelectedLeft"
+  | "nudgeSelectedRight";
 
 export interface KeyboardShortcutInput {
   key: string;
@@ -38,6 +40,8 @@ export const resolveKeyboardShortcut = (input: KeyboardShortcutInput): KeyboardS
   if (!command && key === "]" && !input.shiftKey) return "jumpSelectedEnd";
   if (!command && key === "," && !input.shiftKey) return "jumpPreviousBoundary";
   if (!command && key === "." && !input.shiftKey) return "jumpNextBoundary";
+  if (!command && key === "arrowleft" && input.shiftKey) return "nudgeSelectedLeft";
+  if (!command && key === "arrowright" && input.shiftKey) return "nudgeSelectedRight";
   if (!command && key === "arrowleft" && !input.shiftKey) return "stepLeft";
   if (!command && key === "arrowright" && !input.shiftKey) return "stepRight";
 

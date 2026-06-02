@@ -54,6 +54,8 @@ describe("project core", () => {
     expect(resolveKeyboardShortcut({ key: "." })).toBe("jumpNextBoundary");
     expect(resolveKeyboardShortcut({ key: "ArrowLeft" })).toBe("stepLeft");
     expect(resolveKeyboardShortcut({ key: "ArrowRight" })).toBe("stepRight");
+    expect(resolveKeyboardShortcut({ key: "ArrowLeft", shiftKey: true })).toBe("nudgeSelectedLeft");
+    expect(resolveKeyboardShortcut({ key: "ArrowRight", shiftKey: true })).toBe("nudgeSelectedRight");
     expect(resolveKeyboardShortcut({ key: "d", ctrlKey: true, altKey: true })).toBeNull();
     expect(resolveKeyboardShortcut({ key: "Delete", altKey: true })).toBeNull();
     expect(resolveKeyboardShortcut({ key: "a" })).toBeNull();
@@ -432,6 +434,34 @@ describe("project core", () => {
 
     expect(useProjectStore.getState().selectedClipIds).toEqual(["cap-1", "clip-bgm-1"]);
     expect(useProjectStore.getState().selectedClipId).toBe("clip-bgm-1");
+  });
+
+  it("nudges multiple selected timeline objects together and supports undo", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipIds(["title-hero", "cap-1"]);
+
+    useProjectStore.getState().nudgeSelectedClips(1);
+
+    let clips = useProjectStore.getState().project.tracks.flatMap((track) => track.clips);
+    expect(clips.find((clip) => clip.id === "title-hero")?.startFrame).toBe(1);
+    expect(clips.find((clip) => clip.id === "cap-1")?.startFrame).toBe(37);
+    expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
+
+    useProjectStore.getState().undo();
+    clips = useProjectStore.getState().project.tracks.flatMap((track) => track.clips);
+    expect(clips.find((clip) => clip.id === "title-hero")?.startFrame).toBe(0);
+    expect(clips.find((clip) => clip.id === "cap-1")?.startFrame).toBe(36);
+  });
+
+  it("rejects nudging selected timeline objects before frame zero", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipIds(["title-hero", "cap-1"]);
+
+    useProjectStore.getState().nudgeSelectedClips(-1);
+
+    const clips = useProjectStore.getState().project.tracks.flatMap((track) => track.clips);
+    expect(clips.find((clip) => clip.id === "title-hero")?.startFrame).toBe(0);
+    expect(useProjectStore.getState().lastError).toContain("左");
   });
 
   it("ripple-removes a clip and closes the gap on the same layer", () => {

@@ -65,6 +65,7 @@ interface ProjectStore {
   toggleTrackSolo: (trackId: string) => void;
   moveClipOnTimeline: (clipId: string, targetTrackId: string, startFrame: number) => void;
   trimClipOnTimeline: (clipId: string, edge: "start" | "end", boundaryFrame: number) => void;
+  nudgeSelectedClips: (deltaFrames: number) => void;
   moveSelectedClipLayer: (direction: "up" | "down") => void;
   moveSelectedClipToPlayhead: () => void;
   jumpPlayheadToSelectedBoundary: (boundary: "start" | "end") => void;
@@ -603,6 +604,35 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
           ...(selected.type === "media" ? { sourceInFrame: selected.sourceInFrame + deltaFrames } : {})
         }
       ],
+      "gui"
+    );
+  },
+  nudgeSelectedClips: (deltaFrames) => {
+    const { project, selectedClipId, selectedClipIds } = get();
+    const clips = allClips(project);
+    const targetIds = (selectedClipIds.length > 0 ? selectedClipIds : [selectedClipId]).filter((clipId) =>
+      clips.some(({ clip }) => clip.id === clipId)
+    );
+    if (targetIds.length === 0) {
+      set({ lastError: "移動するオブジェクトを選択してください。" });
+      return;
+    }
+    const safeDeltaFrames = Math.round(deltaFrames);
+    if (safeDeltaFrames === 0) return;
+    const commands: ProjectCommand[] = [];
+    for (const clipId of targetIds) {
+      const located = clips.find(({ clip }) => clip.id === clipId);
+      if (!located) continue;
+      const startFrame = located.clip.startFrame + safeDeltaFrames;
+      if (startFrame < 0) {
+        set({ lastError: "これ以上左へ移動できません。" });
+        return;
+      }
+      commands.push({ type: "moveClip", clipId, targetTrackId: located.track.id, startFrame });
+    }
+    get().commitCommands(
+      targetIds.length > 1 ? "Nudge selected timeline objects" : "Nudge timeline object",
+      commands,
       "gui"
     );
   },

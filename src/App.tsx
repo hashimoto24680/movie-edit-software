@@ -1774,6 +1774,12 @@ export default function App() {
         case "stepRight":
           useProjectStore.getState().setPlayheadFrame(useProjectStore.getState().playheadFrame + 1);
           break;
+        case "nudgeSelectedLeft":
+          useProjectStore.getState().nudgeSelectedClips(-1);
+          break;
+        case "nudgeSelectedRight":
+          useProjectStore.getState().nudgeSelectedClips(1);
+          break;
       }
     };
 

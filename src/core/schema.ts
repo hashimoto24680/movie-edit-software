@@ -170,6 +170,13 @@ export const projectAstSchema = z.object({
 export const projectCommandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("importAsset"), asset: assetSchema }),
   z.object({ type: z.literal("addTrack"), track: trackSchema }),
+  z.object({
+    type: z.literal("updateTrackState"),
+    trackId: z.string().min(1),
+    locked: z.boolean().optional(),
+    muted: z.boolean().optional(),
+    solo: z.boolean().optional()
+  }),
   z.object({ type: z.literal("addClip"), trackId: z.string().min(1), clip: clipSchema }),
   z.object({
     type: z.literal("trimClip"),

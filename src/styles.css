@@ -547,6 +547,8 @@ input[type="range"] {
 .track-head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 6px;
   padding: 0 8px;
   border-radius: 6px;
   color: #ced8e2;
@@ -561,6 +563,31 @@ input[type="range"] {
   white-space: nowrap;
 }
 
+.track-controls {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 3px;
+}
+
+.track-control-button {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #37414c;
+  border-radius: 4px;
+  color: #9caeba;
+  background: #181d23;
+  cursor: pointer;
+}
+
+.track-control-button:hover,
+.track-control-button.active {
+  color: #f3d77c;
+  border-color: #6f6238;
+  background: #252414;
+}
+
 .track-lane {
   position: relative;
   min-height: 34px;
@@ -571,6 +598,20 @@ input[type="range"] {
 
 .track-lane.layer {
   background: #12161b;
+}
+
+.track-row.locked .track-lane {
+  background: #101317;
+}
+
+.track-row.locked .clip-block {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.track-row.muted .clip-block {
+  filter: saturate(0.35);
+  opacity: 0.58;
 }
 
 .timeline-playhead-line,
@@ -722,6 +763,28 @@ input[type="range"] {
   display: grid;
   grid-template-columns: 64px 1fr;
   gap: 8px;
+}
+
+.property-controls {
+  display: contents;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.property-controls:disabled {
+  opacity: 0.62;
+}
+
+.locked-note {
+  margin: 8px 0;
+  padding: 7px 8px;
+  border: 1px solid #6f6238;
+  border-radius: 4px;
+  color: #f3d77c;
+  background: #252414;
+  font-size: 12px;
 }
 
 .clip-fields dt {

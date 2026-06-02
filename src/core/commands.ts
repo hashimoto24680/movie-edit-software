@@ -26,6 +26,9 @@ const replaceClip = (project: ProjectAst, clipId: string, replace: (clip: Clip) 
   if (!located) {
     throw new Error(`Clip not found: ${clipId}`);
   }
+  if (located.track.locked) {
+    throw new Error(`Track is locked: ${located.track.id}`);
+  }
 
   next.tracks[located.trackIndex].clips[located.clipIndex] = replace(located.clip);
   return next;
@@ -36,6 +39,9 @@ const moveClip = (project: ProjectAst, command: Extract<ProjectCommand, { type: 
   const located = findClip(next, command.clipId);
   if (!located) {
     throw new Error(`Clip not found: ${command.clipId}`);
+  }
+  if (located.track.locked) {
+    throw new Error(`Track is locked: ${located.track.id}`);
   }
 
   const clip = { ...located.clip, startFrame: command.startFrame };
@@ -61,6 +67,9 @@ const splitClip = (project: ProjectAst, command: Extract<ProjectCommand, { type:
   const located = findClip(next, command.clipId);
   if (!located) {
     throw new Error(`Clip not found: ${command.clipId}`);
+  }
+  if (located.track.locked) {
+    throw new Error(`Track is locked: ${located.track.id}`);
   }
 
   const clip = located.clip;
@@ -110,6 +119,17 @@ export const applyCommand = (project: ProjectAst, command: ProjectCommand): Proj
         throw new Error(`Track already exists: ${command.track.id}`);
       }
       next.tracks.push(command.track);
+      return next;
+    }
+    case "updateTrackState": {
+      const next = cloneProject(project);
+      const track = next.tracks.find((candidate) => candidate.id === command.trackId);
+      if (!track) {
+        throw new Error(`Track not found: ${command.trackId}`);
+      }
+      track.locked = command.locked ?? track.locked;
+      track.muted = command.muted ?? track.muted;
+      track.solo = command.solo ?? track.solo;
       return next;
     }
     case "addClip": {
@@ -165,6 +185,9 @@ export const applyCommand = (project: ProjectAst, command: ProjectCommand): Proj
       if (!located) {
         throw new Error(`Clip not found: ${command.clipId}`);
       }
+      if (located.track.locked) {
+        throw new Error(`Track is locked: ${located.track.id}`);
+      }
       next.tracks[located.trackIndex].clips.splice(located.clipIndex, 1);
       return next;
     }
@@ -216,12 +239,18 @@ export const applyCommand = (project: ProjectAst, command: ProjectCommand): Proj
       const next = cloneProject(project);
       const track = next.tracks.find((candidate) => candidate.id === command.targetId);
       if (track) {
+        if (track.locked) {
+          throw new Error(`Track is locked: ${track.id}`);
+        }
         track.effects.push(command.effect);
         return next;
       }
       const located = findClip(next, command.targetId);
       if (!located) {
         throw new Error(`Effect target not found: ${command.targetId}`);
+      }
+      if (located.track.locked) {
+        throw new Error(`Track is locked: ${located.track.id}`);
       }
       next.tracks[located.trackIndex].clips[located.clipIndex].effects.push(command.effect);
       return next;

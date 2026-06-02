@@ -154,6 +154,7 @@ export interface ProjectAst {
 export type ProjectCommand =
   | { type: "importAsset"; asset: Asset }
   | { type: "addTrack"; track: Track }
+  | { type: "updateTrackState"; trackId: string; locked?: boolean; muted?: boolean; solo?: boolean }
   | { type: "addClip"; trackId: string; clip: Clip }
   | {
       type: "trimClip";

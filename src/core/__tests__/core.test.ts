@@ -128,6 +128,56 @@ describe("project core", () => {
     ).toThrow(/overlapping objects/);
   });
 
+  it("updates layer lock and mute state through commands", () => {
+    const { project } = applyCommandsChecked(sampleProject, [
+      { type: "updateTrackState", trackId: "layer-1", locked: true, muted: true }
+    ]);
+    const layer = project.tracks.find((track) => track.id === "layer-1");
+
+    expect(layer?.locked).toBe(true);
+    expect(layer?.muted).toBe(true);
+    expect(validateProject(project).ok).toBe(true);
+  });
+
+  it("rejects edits on locked layers through the reducer", () => {
+    const lockedProject = applyCommandsChecked(sampleProject, [
+      { type: "updateTrackState", trackId: "layer-1", locked: true }
+    ]).project;
+
+    expect(() =>
+      applyCommandsChecked(lockedProject, [
+        { type: "moveClip", clipId: "clip-talk-1", targetTrackId: "layer-5", startFrame: 300 }
+      ])
+    ).toThrow(/Track is locked/);
+    expect(() =>
+      applyCommandsChecked(lockedProject, [{ type: "trimClip", clipId: "clip-talk-1", durationFrames: 30 }])
+    ).toThrow(/Track is locked/);
+    expect(() =>
+      applyCommandsChecked(lockedProject, [{ type: "removeClip", clipId: "clip-talk-1" }])
+    ).toThrow(/Track is locked/);
+  });
+
+  it("rejects moves into locked layers and allows edits after unlocking", () => {
+    const lockedTargetProject = applyCommandsChecked(sampleProject, [
+      { type: "updateTrackState", trackId: "layer-5", locked: true }
+    ]).project;
+
+    expect(() =>
+      applyCommandsChecked(lockedTargetProject, [
+        { type: "moveClip", clipId: "clip-talk-1", targetTrackId: "layer-5", startFrame: 300 }
+      ])
+    ).toThrow(/Track is locked/);
+
+    const unlockedProject = applyCommandsChecked(lockedTargetProject, [
+      { type: "updateTrackState", trackId: "layer-5", locked: false }
+    ]).project;
+    const movedProject = applyCommandsChecked(unlockedProject, [
+      { type: "moveClip", clipId: "clip-talk-1", targetTrackId: "layer-5", startFrame: 300 }
+    ]).project;
+
+    expect(movedProject.tracks.find((track) => track.id === "layer-5")?.clips.some((clip) => clip.id === "clip-talk-1")).toBe(true);
+  });
+
   it("rejects composition clips that reference missing compositions", () => {
     const project = structuredClone(sampleProject);
     project.tracks[4].clips.push({
@@ -318,6 +368,27 @@ describe("project core", () => {
     expect(clip?.durationFrames).toBe(90);
     expect(clip?.type === "media" ? clip.sourceDurationFrames : null).toBe(90);
     expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
+  });
+
+  it("toggles layer lock and mute through the store history", () => {
+    useProjectStore.getState().resetSample();
+
+    useProjectStore.getState().toggleTrackLocked("layer-1");
+    useProjectStore.getState().toggleTrackMuted("layer-1");
+
+    let layer = useProjectStore.getState().project.tracks.find((track) => track.id === "layer-1");
+    expect(layer?.locked).toBe(true);
+    expect(layer?.muted).toBe(true);
+
+    useProjectStore.getState().undo();
+    layer = useProjectStore.getState().project.tracks.find((track) => track.id === "layer-1");
+    expect(layer?.locked).toBe(true);
+    expect(layer?.muted).toBe(false);
+
+    useProjectStore.getState().redo();
+    layer = useProjectStore.getState().project.tracks.find((track) => track.id === "layer-1");
+    expect(layer?.locked).toBe(true);
+    expect(layer?.muted).toBe(true);
   });
 
   it("runs GUI and LLM operations through the same reducer contract", () => {

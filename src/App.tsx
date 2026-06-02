@@ -5,6 +5,7 @@ import {
   Film,
   History,
   Layers,
+  Lock,
   Monitor,
   PanelRight,
   RotateCcw,
@@ -16,7 +17,10 @@ import {
   Move,
   Trash2,
   Type,
+  Unlock,
   Upload,
+  Volume2,
+  VolumeX,
   Wand2,
   X
 } from "lucide-react";
@@ -513,6 +517,8 @@ function Timeline() {
   const setSelectedClipId = useProjectStore((state) => state.setSelectedClipId);
   const moveClipOnTimeline = useProjectStore((state) => state.moveClipOnTimeline);
   const selectTimelineFrame = useProjectStore((state) => state.selectTimelineFrame);
+  const toggleTrackLocked = useProjectStore((state) => state.toggleTrackLocked);
+  const toggleTrackMuted = useProjectStore((state) => state.toggleTrackMuted);
   const contentEndFrame = timelineEnd(project);
   const fps = fpsToNumber(project.render.fps);
   const zoomedOutVisibleFrames = Math.max(1, Math.round(4 * 60 * 60 * fps));
@@ -655,6 +661,7 @@ function Timeline() {
         ref={timelineRef}
         onPointerDown={(event) => {
           if ((event.target as HTMLElement).closest(".timeline-ruler")) return;
+          if ((event.target as HTMLElement).closest(".track-head")) return;
           if ((event.target as HTMLElement).closest(".clip-block")) return;
           const frame = setPlayheadFromTimelinePointer(event);
           if (frame === null) return;
@@ -664,6 +671,7 @@ function Timeline() {
         }}
         onPointerMove={(event) => {
           if ((event.target as HTMLElement).closest(".timeline-ruler")) return;
+          if ((event.target as HTMLElement).closest(".track-head")) return;
           if (playheadDragging) setPlayheadFromTimelinePointer(event);
         }}
         onPointerUp={(event) => {
@@ -706,9 +714,35 @@ function Timeline() {
           <span className="timeline-playhead-line" style={{ left: `${timelinePlayheadLeft}px` }} />
           {snapGuideLeft !== null ? <span className="timeline-snap-line" style={{ left: `${snapGuideLeft}px` }} /> : null}
           {project.tracks.map((track) => (
-            <div className="track-row" key={track.id}>
+            <div className={`track-row ${track.locked ? "locked" : ""} ${track.muted ? "muted" : ""}`} key={track.id}>
               <div className="track-head">
                 <span>{displayTrackName(track.name)}</span>
+                <div className="track-controls" aria-label={`${displayTrackName(track.name)} controls`}>
+                  <button
+                    className={`track-control-button ${track.locked ? "active" : ""}`}
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleTrackLocked(track.id);
+                    }}
+                    title={track.locked ? "ロック解除" : "レイヤーをロック"}
+                    aria-label={track.locked ? "ロック解除" : "レイヤーをロック"}
+                  >
+                    {track.locked ? <Lock size={13} /> : <Unlock size={13} />}
+                  </button>
+                  <button
+                    className={`track-control-button ${track.muted ? "active" : ""}`}
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleTrackMuted(track.id);
+                    }}
+                    title={track.muted ? "ミュート解除" : "レイヤーをミュート"}
+                    aria-label={track.muted ? "ミュート解除" : "レイヤーをミュート"}
+                  >
+                    {track.muted ? <VolumeX size={13} /> : <Volume2 size={13} />}
+                  </button>
+                </div>
               </div>
               <div
                 className="track-lane layer"
@@ -729,11 +763,15 @@ function Timeline() {
                       }`}
                       key={clip.id}
                       style={{ left: `${left}%`, width: `${width}%` }}
-                      draggable
+                      draggable={!track.locked}
                       onClick={() => {
                         setSelectedClipId(clip.id);
                       }}
                       onDragStart={(event) => {
+                        if (track.locked) {
+                          event.preventDefault();
+                          return;
+                        }
                         const lane = event.currentTarget.closest("[data-track-id]") as HTMLElement | null;
                         const pointerFrame = lane ? frameFromClientX(event.clientX, lane, timelineFrameRange) : clip.startFrame;
                         const offsetFrames = clamp(pointerFrame - clip.startFrame, 0, clip.durationFrames);
@@ -830,6 +868,7 @@ function Inspector() {
   const setSelectedDurationFrames = useProjectStore((state) => state.setSelectedDurationFrames);
   const updateSelectedTransform = useProjectStore((state) => state.updateSelectedTransform);
   const clip = selectedClip(project, selectedClipId);
+  const selectedTrack = project.tracks.find((track) => track.clips.some((candidate) => candidate.id === selectedClipId));
 
   if (!clip) {
     return (
@@ -850,6 +889,7 @@ function Inspector() {
   const textStyle = "text" in clip ? textStyleValue(clip.meta.textStyle) : null;
   const startSeconds = framesToSeconds(clip.startFrame, project.render.fps);
   const durationSeconds = framesToSeconds(clip.durationFrames, project.render.fps);
+  const isLocked = Boolean(selectedTrack?.locked);
 
   return (
     <aside className="inspector">
@@ -875,35 +915,37 @@ function Inspector() {
           <dd>{framesToTimecode(clip.durationFrames, project.render.fps)}</dd>
         </div>
       </dl>
-      <div className="section-title">
-        <Clock aria-hidden />
-        <span>時間</span>
-      </div>
-      <div className="inline-fields">
-        <label className="field">
-          <span>開始秒</span>
-          <input
-            key={`${clip.id}-start-${clip.startFrame}`}
-            min={0}
-            step={0.001}
-            type="number"
-            defaultValue={startSeconds.toFixed(3)}
-            onBlur={(event) => setSelectedStartFrame(secondsToFrames(Number(event.target.value), project.render.fps))}
-          />
-        </label>
-        <label className="field">
-          <span>長さ秒</span>
-          <input
-            key={`${clip.id}-duration-${clip.durationFrames}`}
-            min={0.001}
-            step={0.001}
-            type="number"
-            defaultValue={durationSeconds.toFixed(3)}
-            onBlur={(event) => setSelectedDurationFrames(secondsToFrames(Number(event.target.value), project.render.fps))}
-          />
-        </label>
-      </div>
-      {"text" in clip ? (
+      {isLocked ? <div className="locked-note">このレイヤーはロック中です。</div> : null}
+      <fieldset className="property-controls" disabled={isLocked}>
+        <div className="section-title">
+          <Clock aria-hidden />
+          <span>時間</span>
+        </div>
+        <div className="inline-fields">
+          <label className="field">
+            <span>開始秒</span>
+            <input
+              key={`${clip.id}-start-${clip.startFrame}`}
+              min={0}
+              step={0.001}
+              type="number"
+              defaultValue={startSeconds.toFixed(3)}
+              onBlur={(event) => setSelectedStartFrame(secondsToFrames(Number(event.target.value), project.render.fps))}
+            />
+          </label>
+          <label className="field">
+            <span>長さ秒</span>
+            <input
+              key={`${clip.id}-duration-${clip.durationFrames}`}
+              min={0.001}
+              step={0.001}
+              type="number"
+              defaultValue={durationSeconds.toFixed(3)}
+              onBlur={(event) => setSelectedDurationFrames(secondsToFrames(Number(event.target.value), project.render.fps))}
+            />
+          </label>
+        </div>
+        {"text" in clip ? (
         <>
           <label className="field">
             <span>テキスト</span>
@@ -1030,8 +1072,8 @@ function Inspector() {
             </>
           ) : null}
         </>
-      ) : null}
-      {clip.type === "media" ? (
+        ) : null}
+        {clip.type === "media" ? (
         <label className="field">
           <span>音量 {volume.toFixed(2)}</span>
           <input
@@ -1043,84 +1085,85 @@ function Inspector() {
             onChange={(event) => setSelectedVolume(Number(event.target.value))}
           />
         </label>
-      ) : null}
-      <div className="section-title">
-        <Move aria-hidden />
-        <span>配置</span>
-      </div>
-      <label className="field compact">
-        <span>X {(position.x * 100).toFixed(0)}%</span>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={position.x}
-          onChange={(event) => updateSelectedTransform({ position: { ...position, x: Number(event.target.value) } })}
-        />
-      </label>
-      <label className="field compact">
-        <span>Y {(position.y * 100).toFixed(0)}%</span>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={position.y}
-          onChange={(event) => updateSelectedTransform({ position: { ...position, y: Number(event.target.value) } })}
-        />
-      </label>
-      <label className="field compact">
-        <span>Scale X {scale.x.toFixed(2)}</span>
-        <input
-          type="range"
-          min={0.1}
-          max={3}
-          step={0.01}
-          value={scale.x}
-          onChange={(event) => updateSelectedTransform({ scale: { ...scale, x: Number(event.target.value) } })}
-        />
-      </label>
-      <label className="field compact">
-        <span>Scale Y {scale.y.toFixed(2)}</span>
-        <input
-          type="range"
-          min={0.1}
-          max={3}
-          step={0.01}
-          value={scale.y}
-          onChange={(event) => updateSelectedTransform({ scale: { ...scale, y: Number(event.target.value) } })}
-        />
-      </label>
-      <label className="field compact">
-        <span>Opacity {opacity.toFixed(2)}</span>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={opacity}
-          onChange={(event) => updateSelectedTransform({ opacity: Number(event.target.value) })}
-        />
-      </label>
-      <label className="field compact">
-        <span>Rotation {rotation.toFixed(0)}deg</span>
-        <input
-          type="range"
-          min={-180}
-          max={180}
-          step={1}
-          value={rotation}
-          onChange={(event) => updateSelectedTransform({ rotation: Number(event.target.value) })}
-        />
-      </label>
-      <button className="tool-button full" onClick={addUnsupportedEffectToSelected}>
-        <Wand2 aria-hidden />
-        future-glow
-      </button>
-      <div className="effect-list">
-        {clip.effects.length === 0 ? <span>effects: []</span> : clip.effects.map((effect) => <span key={effect.id}>{effect.type}</span>)}
-      </div>
+        ) : null}
+        <div className="section-title">
+          <Move aria-hidden />
+          <span>配置</span>
+        </div>
+        <label className="field compact">
+          <span>X {(position.x * 100).toFixed(0)}%</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={position.x}
+            onChange={(event) => updateSelectedTransform({ position: { ...position, x: Number(event.target.value) } })}
+          />
+        </label>
+        <label className="field compact">
+          <span>Y {(position.y * 100).toFixed(0)}%</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={position.y}
+            onChange={(event) => updateSelectedTransform({ position: { ...position, y: Number(event.target.value) } })}
+          />
+        </label>
+        <label className="field compact">
+          <span>Scale X {scale.x.toFixed(2)}</span>
+          <input
+            type="range"
+            min={0.1}
+            max={3}
+            step={0.01}
+            value={scale.x}
+            onChange={(event) => updateSelectedTransform({ scale: { ...scale, x: Number(event.target.value) } })}
+          />
+        </label>
+        <label className="field compact">
+          <span>Scale Y {scale.y.toFixed(2)}</span>
+          <input
+            type="range"
+            min={0.1}
+            max={3}
+            step={0.01}
+            value={scale.y}
+            onChange={(event) => updateSelectedTransform({ scale: { ...scale, y: Number(event.target.value) } })}
+          />
+        </label>
+        <label className="field compact">
+          <span>Opacity {opacity.toFixed(2)}</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={opacity}
+            onChange={(event) => updateSelectedTransform({ opacity: Number(event.target.value) })}
+          />
+        </label>
+        <label className="field compact">
+          <span>Rotation {rotation.toFixed(0)}deg</span>
+          <input
+            type="range"
+            min={-180}
+            max={180}
+            step={1}
+            value={rotation}
+            onChange={(event) => updateSelectedTransform({ rotation: Number(event.target.value) })}
+          />
+        </label>
+        <button className="tool-button full" onClick={addUnsupportedEffectToSelected}>
+          <Wand2 aria-hidden />
+          future-glow
+        </button>
+        <div className="effect-list">
+          {clip.effects.length === 0 ? <span>effects: []</span> : clip.effects.map((effect) => <span key={effect.id}>{effect.type}</span>)}
+        </div>
+      </fieldset>
     </aside>
   );
 }

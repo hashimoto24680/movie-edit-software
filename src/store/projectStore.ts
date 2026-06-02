@@ -40,6 +40,7 @@ interface ProjectStore {
   setSelectedClipIds: (clipIds: string[]) => void;
   toggleSelectedClipId: (clipId: string) => void;
   selectAllClips: () => void;
+  clearSelection: () => void;
   setPlayheadFrame: (frame: number) => void;
   selectTimelineFrame: (frame: number) => void;
   setLlmText: (text: string) => void;
@@ -200,6 +201,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     const selectedClipIds = get().project.tracks.flatMap((track) => track.clips.map((clip) => clip.id));
     set({ selectedClipId: selectedClipIds.at(-1) ?? "", selectedClipIds });
   },
+  clearSelection: () => set({ selectedClipId: "", selectedClipIds: [] }),
   setPlayheadFrame: (playheadFrame) => set({ playheadFrame }),
   selectTimelineFrame: (frame) => {
     const { frameSelection } = get();

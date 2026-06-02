@@ -1773,6 +1773,9 @@ export default function App() {
         case "selectAll":
           useProjectStore.getState().selectAllClips();
           break;
+        case "clearSelection":
+          useProjectStore.getState().clearSelection();
+          break;
         case "duplicate":
           useProjectStore.getState().duplicateSelectedClip();
           break;

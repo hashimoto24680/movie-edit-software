@@ -1098,6 +1098,17 @@ describe("project core", () => {
     expect(marker?.frame).toBe(120);
   });
 
+  it("removes a timeline marker by id through the store and supports undo", () => {
+    useProjectStore.getState().resetSample();
+
+    useProjectStore.getState().removeMarker("marker-intro");
+
+    expect(useProjectStore.getState().project.markers.some((marker) => marker.id === "marker-intro")).toBe(false);
+
+    useProjectStore.getState().undo();
+    expect(useProjectStore.getState().project.markers.some((marker) => marker.id === "marker-intro")).toBe(true);
+  });
+
   it("reports an error when timeline boundary navigation has no target", () => {
     useProjectStore.getState().resetSample();
     useProjectStore.getState().setPlayheadFrame(0);

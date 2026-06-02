@@ -45,6 +45,7 @@ interface ProjectStore {
   setPlayheadFrame: (frame: number) => void;
   selectTimelineFrame: (frame: number) => void;
   addMarkerAtPlayhead: () => void;
+  removeMarker: (markerId: string) => void;
   removeMarkerAtPlayhead: () => void;
   jumpPlayheadToMarker: (direction: "previous" | "next") => void;
   updateMarker: (markerId: string, patch: { frame?: number; label?: string; color?: string }) => void;
@@ -252,6 +253,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       "gui"
     );
   },
+  removeMarker: (markerId) => {
+    get().commitCommands("Remove timeline marker", [{ type: "removeMarker", markerId }], "gui");
+  },
   removeMarkerAtPlayhead: () => {
     const { project, playheadFrame } = get();
     const frame = Math.max(0, Math.round(playheadFrame));
@@ -260,7 +264,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       set({ lastError: "現在位置に削除できるマーカーがありません。" });
       return;
     }
-    get().commitCommands("Remove timeline marker", [{ type: "removeMarker", markerId: marker.id }], "gui");
+    get().removeMarker(marker.id);
   },
   jumpPlayheadToMarker: (direction) => {
     const { project, playheadFrame } = get();

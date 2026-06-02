@@ -1694,6 +1694,7 @@ function ProjectPanel() {
   const exportVideo = useProjectStore((state) => state.exportVideo);
   const exportProjectFileText = useProjectStore((state) => state.exportProjectFileText);
   const loadProjectFileText = useProjectStore((state) => state.loadProjectFileText);
+  const removeMarker = useProjectStore((state) => state.removeMarker);
   const updateMarker = useProjectStore((state) => state.updateMarker);
   const lastError = useProjectStore((state) => state.lastError);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1798,6 +1799,9 @@ function ProjectPanel() {
               value={marker.color.startsWith("#") ? marker.color : "#f3d77c"}
               onChange={(event) => updateMarker(marker.id, { color: event.target.value })}
             />
+            <button className="marker-remove" type="button" title={`${marker.label}を削除`} onClick={() => removeMarker(marker.id)}>
+              <Trash2 aria-hidden />
+            </button>
           </div>
         ))}
       </div>

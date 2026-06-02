@@ -425,6 +425,15 @@ describe("project core", () => {
     expect(clipIds).toContain("cap-2");
   });
 
+  it("sets multiple selected timeline objects while ignoring duplicate or missing ids", () => {
+    useProjectStore.getState().resetSample();
+
+    useProjectStore.getState().setSelectedClipIds(["cap-1", "missing", "cap-1", "clip-bgm-1"]);
+
+    expect(useProjectStore.getState().selectedClipIds).toEqual(["cap-1", "clip-bgm-1"]);
+    expect(useProjectStore.getState().selectedClipId).toBe("clip-bgm-1");
+  });
+
   it("ripple-removes a clip and closes the gap on the same layer", () => {
     const { project } = applyCommandsChecked(sampleProject, [{ type: "rippleRemoveClip", clipId: "cap-1" }]);
     const captionTrack = project.tracks.find((track) => track.id === "layer-3");

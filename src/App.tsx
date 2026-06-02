@@ -716,6 +716,7 @@ function Timeline() {
   const selectedClipId = useProjectStore((state) => state.selectedClipId);
   const selectedClipIds = useProjectStore((state) => state.selectedClipIds);
   const setSelectedClipId = useProjectStore((state) => state.setSelectedClipId);
+  const setSelectedClipIds = useProjectStore((state) => state.setSelectedClipIds);
   const toggleSelectedClipId = useProjectStore((state) => state.toggleSelectedClipId);
   const moveClipOnTimeline = useProjectStore((state) => state.moveClipOnTimeline);
   const trimClipOnTimeline = useProjectStore((state) => state.trimClipOnTimeline);
@@ -748,6 +749,14 @@ function Timeline() {
     snapGuideFrame: number | null;
   } | null>(null);
   const [playheadDragging, setPlayheadDragging] = useState(false);
+  const [timelineRangeSelect, setTimelineRangeSelect] = useState<{
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+    baseSelectedClipIds: string[];
+    additive: boolean;
+  } | null>(null);
   const [timelineZoom, setTimelineZoom] = useState(0);
   const [timelineViewportWidth, setTimelineViewportWidth] = useState(1);
   const visibleFrames = Math.max(
@@ -818,6 +827,30 @@ function Timeline() {
     }
     setSelectedClipId(nearest.id);
   };
+
+  const clipIdsInTimelineRange = (range: NonNullable<typeof timelineRangeSelect>): string[] => {
+    if (!timelineCanvasRef.current) return [];
+    const rangeLeft = Math.min(range.startX, range.currentX);
+    const rangeRight = Math.max(range.startX, range.currentX);
+    const rangeTop = Math.min(range.startY, range.currentY);
+    const rangeBottom = Math.max(range.startY, range.currentY);
+    return [...timelineCanvasRef.current.querySelectorAll<HTMLElement>(".clip-block")]
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.left <= rangeRight && rect.right >= rangeLeft && rect.top <= rangeBottom && rect.bottom >= rangeTop;
+      })
+      .map((element) => element.title)
+      .filter(Boolean);
+  };
+
+  const selectionRectStyle = timelineRangeSelect
+    ? {
+        left: `${Math.min(timelineRangeSelect.startX, timelineRangeSelect.currentX) - (timelineCanvasRef.current?.getBoundingClientRect().left ?? 0)}px`,
+        top: `${Math.min(timelineRangeSelect.startY, timelineRangeSelect.currentY) - (timelineCanvasRef.current?.getBoundingClientRect().top ?? 0)}px`,
+        width: `${Math.abs(timelineRangeSelect.currentX - timelineRangeSelect.startX)}px`,
+        height: `${Math.abs(timelineRangeSelect.currentY - timelineRangeSelect.startY)}px`
+      }
+    : undefined;
 
   const previewTrim = (
     trim: NonNullable<typeof timelineTrim>,
@@ -962,24 +995,48 @@ function Timeline() {
           if ((event.target as HTMLElement).closest(".timeline-ruler")) return;
           if ((event.target as HTMLElement).closest(".track-head")) return;
           if ((event.target as HTMLElement).closest(".clip-block")) return;
-          const frame = setPlayheadFromTimelinePointer(event);
-          if (frame === null) return;
-          selectTimelineFrame(frame);
-          setPlayheadDragging(true);
+          setTimelineRangeSelect({
+            startX: event.clientX,
+            startY: event.clientY,
+            currentX: event.clientX,
+            currentY: event.clientY,
+            baseSelectedClipIds: selectedClipIds,
+            additive: event.shiftKey
+          });
           event.currentTarget.setPointerCapture(event.pointerId);
         }}
         onPointerMove={(event) => {
           if ((event.target as HTMLElement).closest(".timeline-ruler")) return;
           if ((event.target as HTMLElement).closest(".track-head")) return;
+          if (timelineRangeSelect) {
+            setTimelineRangeSelect({ ...timelineRangeSelect, currentX: event.clientX, currentY: event.clientY });
+            return;
+          }
           if (playheadDragging) setPlayheadFromTimelinePointer(event);
         }}
         onPointerUp={(event) => {
+          if (timelineRangeSelect) {
+            const nextRange = { ...timelineRangeSelect, currentX: event.clientX, currentY: event.clientY };
+            const moved = Math.hypot(nextRange.currentX - nextRange.startX, nextRange.currentY - nextRange.startY);
+            if (moved >= 4) {
+              const rangeClipIds = clipIdsInTimelineRange(nextRange);
+              const nextSelectedClipIds = nextRange.additive ? [...nextRange.baseSelectedClipIds, ...rangeClipIds] : rangeClipIds;
+              setSelectedClipIds(nextSelectedClipIds);
+            } else {
+              const frame = setPlayheadFromTimelinePointer(event);
+              if (frame !== null) selectTimelineFrame(frame);
+            }
+            setTimelineRangeSelect(null);
+          }
           setPlayheadDragging(false);
           if (event.currentTarget.hasPointerCapture(event.pointerId)) {
             event.currentTarget.releasePointerCapture(event.pointerId);
           }
         }}
-        onPointerLeave={() => setPlayheadDragging(false)}
+        onPointerLeave={() => {
+          setPlayheadDragging(false);
+          setTimelineRangeSelect(null);
+        }}
         onDragOver={(event) => {
           event.preventDefault();
           updateTimelineDrag(event);
@@ -1012,6 +1069,7 @@ function Timeline() {
           </div>
           <span className="timeline-playhead-line" style={{ left: `${timelinePlayheadLeft}px` }} />
           {snapGuideLeft !== null ? <span className="timeline-snap-line" style={{ left: `${snapGuideLeft}px` }} /> : null}
+          {selectionRectStyle ? <span className="timeline-selection-rect" style={selectionRectStyle} /> : null}
           {project.tracks.map((track) => (
             <div
               className={`track-row ${track.locked ? "locked" : ""} ${track.muted ? "muted" : ""} ${

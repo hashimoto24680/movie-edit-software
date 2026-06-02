@@ -37,6 +37,7 @@ interface ProjectStore {
   frameSelection: { startFrame: number | null; endFrame: number | null };
   llmStatus: string;
   setSelectedClipId: (clipId: string) => void;
+  setSelectedClipIds: (clipIds: string[]) => void;
   toggleSelectedClipId: (clipId: string) => void;
   setPlayheadFrame: (frame: number) => void;
   selectTimelineFrame: (frame: number) => void;
@@ -177,6 +178,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   frameSelection: { startFrame: null, endFrame: null },
   llmStatus: "LLMへの自然文指示をここに入力できます。",
   setSelectedClipId: (selectedClipId) => set({ selectedClipId, selectedClipIds: selectedClipId ? [selectedClipId] : [] }),
+  setSelectedClipIds: (clipIds) => {
+    const existingClipIds = allClips(get().project).map(({ clip }) => clip.id);
+    const selectedClipIds = clipIds.filter((clipId, index) => existingClipIds.includes(clipId) && clipIds.indexOf(clipId) === index);
+    set({ selectedClipId: selectedClipIds.at(-1) ?? "", selectedClipIds });
+  },
   toggleSelectedClipId: (clipId) => {
     const { selectedClipIds } = get();
     const nextSelectedClipIds = selectedClipIds.includes(clipId)

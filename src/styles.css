@@ -730,6 +730,14 @@ input[type="range"] {
   box-shadow: 0 0 0 1px rgba(110, 231, 242, 0.28);
 }
 
+.timeline-selection-rect {
+  position: absolute;
+  z-index: 90;
+  border: 1px solid #f3d77c;
+  background: rgba(243, 215, 124, 0.12);
+  pointer-events: none;
+}
+
 .ruler-label {
   position: absolute;
   top: 4px;

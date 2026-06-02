@@ -719,7 +719,6 @@ function Timeline() {
                       draggable
                       onClick={() => {
                         setSelectedClipId(clip.id);
-                        setPlayheadFrame(clip.startFrame);
                       }}
                       onDragStart={(event) => {
                         const lane = event.currentTarget.closest("[data-track-id]") as HTMLElement | null;

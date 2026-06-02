@@ -603,6 +603,36 @@ describe("project core", () => {
     });
   });
 
+  it("moves the selected object between adjacent layers through the store", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("clip-bgm-1");
+
+    useProjectStore.getState().moveSelectedClipLayer("down");
+
+    expect(
+      useProjectStore.getState().project.tracks.find((track) => track.id === "layer-5")?.clips.some((clip) => clip.id === "clip-bgm-1")
+    ).toBe(true);
+
+    useProjectStore.getState().undo();
+    expect(
+      useProjectStore.getState().project.tracks.find((track) => track.id === "layer-4")?.clips.some((clip) => clip.id === "clip-bgm-1")
+    ).toBe(true);
+  });
+
+  it("reports errors when selected object cannot move to an adjacent layer", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("clip-talk-1");
+
+    useProjectStore.getState().moveSelectedClipLayer("up");
+
+    expect(useProjectStore.getState().lastError).toContain("上のレイヤー");
+
+    useProjectStore.getState().setSelectedClipId("title-hero");
+    useProjectStore.getState().moveSelectedClipLayer("up");
+
+    expect(useProjectStore.getState().lastError).toContain("overlapping objects");
+  });
+
   it("toggles layer lock, mute, and solo through the store history", () => {
     useProjectStore.getState().resetSample();
 

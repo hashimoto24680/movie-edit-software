@@ -59,6 +59,7 @@ interface ProjectStore {
   toggleTrackMuted: (trackId: string) => void;
   toggleTrackSolo: (trackId: string) => void;
   moveClipOnTimeline: (clipId: string, targetTrackId: string, startFrame: number) => void;
+  moveSelectedClipLayer: (direction: "up" | "down") => void;
   centerSelectedOnCanvas: () => void;
   fitSelectedToCanvas: (mode: CanvasFitMode) => void;
   alignSelectedHorizontally: (align: HorizontalAlign) => void;
@@ -514,6 +515,25 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     get().commitCommands(
       "Move timeline object",
       [{ type: "moveClip", clipId, targetTrackId, startFrame: nextStartFrame }],
+      "gui"
+    );
+  },
+  moveSelectedClipLayer: (direction) => {
+    const { project, selectedClipId } = get();
+    const trackIndex = project.tracks.findIndex((track) => track.clips.some((clip) => clip.id === selectedClipId));
+    if (trackIndex < 0) {
+      set({ lastError: "レイヤー移動するオブジェクトを選択してください。" });
+      return;
+    }
+    const selected = project.tracks[trackIndex].clips.find((clip) => clip.id === selectedClipId);
+    const targetTrack = project.tracks[direction === "up" ? trackIndex - 1 : trackIndex + 1];
+    if (!selected || !targetTrack) {
+      set({ lastError: direction === "up" ? "これ以上上のレイヤーへ移動できません。" : "これ以上下のレイヤーへ移動できません。" });
+      return;
+    }
+    get().commitCommands(
+      direction === "up" ? "Move object to upper layer" : "Move object to lower layer",
+      [{ type: "moveClip", clipId: selectedClipId, targetTrackId: targetTrack.id, startFrame: selected.startFrame }],
       "gui"
     );
   },

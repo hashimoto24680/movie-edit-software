@@ -593,6 +593,38 @@ describe("project core", () => {
     expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
   });
 
+  it("trims timeline object edges through the store", () => {
+    useProjectStore.getState().resetSample();
+
+    useProjectStore.getState().trimClipOnTimeline("clip-talk-1", "start", 30);
+
+    let clip = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips)
+      .find((candidate) => candidate.id === "clip-talk-1");
+    expect(clip?.startFrame).toBe(30);
+    expect(clip?.durationFrames).toBe(210);
+    expect(clip?.type === "media" ? clip.sourceInFrame : null).toBe(390);
+    expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
+
+    useProjectStore.getState().trimClipOnTimeline("clip-talk-1", "end", 180);
+
+    clip = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips)
+      .find((candidate) => candidate.id === "clip-talk-1");
+    expect(clip?.startFrame).toBe(30);
+    expect(clip?.durationFrames).toBe(150);
+    expect(clip?.type === "media" ? clip.sourceDurationFrames : null).toBe(150);
+
+    useProjectStore.getState().undo();
+    clip = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips)
+      .find((candidate) => candidate.id === "clip-talk-1");
+    expect(clip?.durationFrames).toBe(210);
+  });
+
   it("centers and fits the selected object to the canvas through the store", () => {
     useProjectStore.getState().resetSample();
     useProjectStore.getState().setSelectedClipId("clip-talk-1");

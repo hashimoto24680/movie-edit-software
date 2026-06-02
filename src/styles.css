@@ -816,6 +816,30 @@ input[type="range"] {
   font-size: 12px;
 }
 
+.clip-trim-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  z-index: 120;
+  background: rgba(243, 215, 124, 0.16);
+  cursor: ew-resize;
+}
+
+.clip-trim-handle.start {
+  left: 0;
+  border-right: 2px solid #f3d77c;
+}
+
+.clip-trim-handle.end {
+  right: 0;
+  border-left: 2px solid #f3d77c;
+}
+
+.clip-trim-handle:hover {
+  background: rgba(243, 215, 124, 0.32);
+}
+
 .clip-selection-outline {
   position: absolute;
   top: 2px;

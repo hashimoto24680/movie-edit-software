@@ -708,6 +708,7 @@ function Timeline() {
   const selectedClipId = useProjectStore((state) => state.selectedClipId);
   const setSelectedClipId = useProjectStore((state) => state.setSelectedClipId);
   const moveClipOnTimeline = useProjectStore((state) => state.moveClipOnTimeline);
+  const trimClipOnTimeline = useProjectStore((state) => state.trimClipOnTimeline);
   const selectTimelineFrame = useProjectStore((state) => state.selectTimelineFrame);
   const toggleTrackLocked = useProjectStore((state) => state.toggleTrackLocked);
   const toggleTrackMuted = useProjectStore((state) => state.toggleTrackMuted);
@@ -725,6 +726,15 @@ function Timeline() {
     frame: number;
     offsetFrames: number;
     durationFrames: number;
+    snapGuideFrame: number | null;
+  } | null>(null);
+  const [timelineTrim, setTimelineTrim] = useState<{
+    clipId: string;
+    trackId: string;
+    edge: "start" | "end";
+    startFrame: number;
+    durationFrames: number;
+    boundaryFrame: number;
     snapGuideFrame: number | null;
   } | null>(null);
   const [playheadDragging, setPlayheadDragging] = useState(false);
@@ -748,6 +758,8 @@ function Timeline() {
   const snapGuideLeft =
     timelineDrag?.snapGuideFrame !== null && timelineDrag?.snapGuideFrame !== undefined
       ? frameToCanvasX(timelineDrag.snapGuideFrame)
+      : timelineTrim?.snapGuideFrame !== null && timelineTrim?.snapGuideFrame !== undefined
+        ? frameToCanvasX(timelineTrim.snapGuideFrame)
       : null;
 
   useLayoutEffect(() => {
@@ -768,6 +780,61 @@ function Timeline() {
 
   const snapPlayheadFrame = (frame: number): number =>
     nearestSnapFrame(frame, snapFrames, snapThresholdFrames).frame;
+
+  const previewTrim = (
+    trim: NonNullable<typeof timelineTrim>,
+    frame: number
+  ): { startFrame: number; durationFrames: number; boundaryFrame: number; snapGuideFrame: number | null } => {
+    const selected = allClips(project).find(({ clip }) => clip.id === trim.clipId)?.clip;
+    if (!selected) return trim;
+    const snap = nearestSnapFrame(frame, timelineBoundaryFrames(project, trim.clipId), snapThresholdFrames);
+    const snappedFrame = snap.frame;
+    if (trim.edge === "end") {
+      const boundaryFrame = Math.max(selected.startFrame + 1, snappedFrame);
+      return {
+        startFrame: selected.startFrame,
+        durationFrames: boundaryFrame - selected.startFrame,
+        boundaryFrame,
+        snapGuideFrame: snap.snapped ? boundaryFrame : null
+      };
+    }
+
+    const originalEndFrame = selected.startFrame + selected.durationFrames;
+    const minimumStartFrame = selected.type === "media" ? Math.max(0, selected.startFrame - selected.sourceInFrame) : 0;
+    const startFrame = Math.min(Math.max(minimumStartFrame, snappedFrame), originalEndFrame - 1);
+    return {
+      startFrame,
+      durationFrames: originalEndFrame - startFrame,
+      boundaryFrame: startFrame,
+      snapGuideFrame: snap.snapped ? startFrame : null
+    };
+  };
+
+  useEffect(() => {
+    if (!timelineTrim) return;
+
+    const updateTrim = (event: PointerEvent) => {
+      const lane = timelineRef.current?.querySelector<HTMLElement>(`[data-track-id="${timelineTrim.trackId}"]`);
+      if (!lane) return;
+      const frame = frameFromClientX(event.clientX, lane, timelineFrameRange);
+      const next = previewTrim(timelineTrim, frame);
+      setTimelineTrim({ ...timelineTrim, ...next });
+    };
+
+    const finishTrim = (event: PointerEvent) => {
+      const lane = timelineRef.current?.querySelector<HTMLElement>(`[data-track-id="${timelineTrim.trackId}"]`);
+      const next = lane ? previewTrim(timelineTrim, frameFromClientX(event.clientX, lane, timelineFrameRange)) : timelineTrim;
+      trimClipOnTimeline(timelineTrim.clipId, timelineTrim.edge, next.boundaryFrame);
+      setTimelineTrim(null);
+    };
+
+    window.addEventListener("pointermove", updateTrim);
+    window.addEventListener("pointerup", finishTrim, { once: true });
+    return () => {
+      window.removeEventListener("pointermove", updateTrim);
+      window.removeEventListener("pointerup", finishTrim);
+    };
+  }, [project, timelineFrameRange, timelineTrim, snapThresholdFrames, trimClipOnTimeline]);
 
   const setPlayheadFromRulerPointer = (event: ReactPointerEvent<HTMLElement>): number => {
     const frame = snapPlayheadFrame(frameFromClientX(event.clientX, event.currentTarget, timelineFrameRange));
@@ -961,9 +1028,11 @@ function Timeline() {
                 {track.clips.map((clip) => {
                   const isDragging = timelineDrag?.clipId === clip.id;
                   const draggedHere = isDragging && timelineDrag.targetTrackId === track.id;
-                  const displayFrame = isDragging ? timelineDrag.frame : clip.startFrame;
+                  const isTrimming = timelineTrim?.clipId === clip.id;
+                  const displayFrame = isDragging ? timelineDrag.frame : isTrimming ? timelineTrim.startFrame : clip.startFrame;
                   const left = frameToPercent(displayFrame);
-                  const width = Math.max(0.15, (clip.durationFrames / timelineFrameRange) * 100);
+                  const displayDuration = isTrimming ? timelineTrim.durationFrames : clip.durationFrames;
+                  const width = Math.max(0.15, (displayDuration / timelineFrameRange) * 100);
                   const kind = clipKind(project, clip);
                   if (isDragging && !draggedHere) return null;
                   return (
@@ -1005,8 +1074,48 @@ function Timeline() {
                       onDragEnd={() => setTimelineDrag(null)}
                       title={clip.id}
                     >
+                      {selectedClipId === clip.id && !track.locked ? (
+                        <span
+                          aria-hidden="true"
+                          className="clip-trim-handle start"
+                          onPointerDown={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setSelectedClipId(clip.id);
+                            setTimelineTrim({
+                              clipId: clip.id,
+                              trackId: track.id,
+                              edge: "start",
+                              startFrame: clip.startFrame,
+                              durationFrames: clip.durationFrames,
+                              boundaryFrame: clip.startFrame,
+                              snapGuideFrame: null
+                            });
+                          }}
+                        />
+                      ) : null}
                       <span className="clip-kind">{kind[0].toUpperCase()}</span>
                       <span>{clip.name}</span>
+                      {selectedClipId === clip.id && !track.locked ? (
+                        <span
+                          aria-hidden="true"
+                          className="clip-trim-handle end"
+                          onPointerDown={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setSelectedClipId(clip.id);
+                            setTimelineTrim({
+                              clipId: clip.id,
+                              trackId: track.id,
+                              edge: "end",
+                              startFrame: clip.startFrame,
+                              durationFrames: clip.durationFrames,
+                              boundaryFrame: clip.startFrame + clip.durationFrames,
+                              snapGuideFrame: null
+                            });
+                          }}
+                        />
+                      ) : null}
                     </button>
                   );
                 })}
@@ -1018,9 +1127,11 @@ function Timeline() {
                   )
                   .map((clip) => {
                     const isDragging = timelineDrag?.clipId === clip.id;
-                    const displayFrame = isDragging ? timelineDrag.frame : clip.startFrame;
+                    const isTrimming = timelineTrim?.clipId === clip.id;
+                    const displayFrame = isDragging ? timelineDrag.frame : isTrimming ? timelineTrim.startFrame : clip.startFrame;
                     const left = frameToPercent(displayFrame);
-                    const width = Math.max(0.15, (clip.durationFrames / timelineFrameRange) * 100);
+                    const displayDuration = isTrimming ? timelineTrim.durationFrames : clip.durationFrames;
+                    const width = Math.max(0.15, (displayDuration / timelineFrameRange) * 100);
                     return (
                       <span
                         aria-hidden="true"

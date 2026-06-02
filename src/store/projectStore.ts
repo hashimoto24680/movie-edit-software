@@ -61,6 +61,7 @@ interface ProjectStore {
   toggleTrackMuted: (trackId: string) => void;
   toggleTrackSolo: (trackId: string) => void;
   moveClipOnTimeline: (clipId: string, targetTrackId: string, startFrame: number) => void;
+  trimClipOnTimeline: (clipId: string, edge: "start" | "end", boundaryFrame: number) => void;
   moveSelectedClipLayer: (direction: "up" | "down") => void;
   moveSelectedClipToPlayhead: () => void;
   jumpPlayheadToSelectedBoundary: (boundary: "start" | "end") => void;
@@ -545,6 +546,40 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     get().commitCommands(
       "Move timeline object",
       [{ type: "moveClip", clipId, targetTrackId, startFrame: nextStartFrame }],
+      "gui"
+    );
+  },
+  trimClipOnTimeline: (clipId, edge, boundaryFrame) => {
+    const selected = allClips(get().project).find(({ clip }) => clip.id === clipId)?.clip;
+    if (!selected) {
+      set({ lastError: "トリムするオブジェクトを選択してください。" });
+      return;
+    }
+    const safeBoundaryFrame = Math.max(0, Math.round(boundaryFrame));
+    if (edge === "end") {
+      get().commitCommands(
+        "Trim timeline object end",
+        [{ type: "trimClip", clipId, durationFrames: Math.max(1, safeBoundaryFrame - selected.startFrame) }],
+        "gui"
+      );
+      return;
+    }
+
+    const originalEndFrame = selected.startFrame + selected.durationFrames;
+    const minimumStartFrame = selected.type === "media" ? Math.max(0, selected.startFrame - selected.sourceInFrame) : 0;
+    const nextStartFrame = Math.min(Math.max(minimumStartFrame, safeBoundaryFrame), originalEndFrame - 1);
+    const deltaFrames = nextStartFrame - selected.startFrame;
+    get().commitCommands(
+      "Trim timeline object start",
+      [
+        {
+          type: "trimClip",
+          clipId,
+          startFrame: nextStartFrame,
+          durationFrames: originalEndFrame - nextStartFrame,
+          ...(selected.type === "media" ? { sourceInFrame: selected.sourceInFrame + deltaFrames } : {})
+        }
+      ],
       "gui"
     );
   },

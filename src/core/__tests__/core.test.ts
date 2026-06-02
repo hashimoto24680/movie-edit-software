@@ -313,6 +313,61 @@ describe("project core", () => {
     expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
   });
 
+  it("ripple-removes a clip and closes the gap on the same layer", () => {
+    const { project } = applyCommandsChecked(sampleProject, [{ type: "rippleRemoveClip", clipId: "cap-1" }]);
+    const captionTrack = project.tracks.find((track) => track.id === "layer-3");
+    const cap2 = captionTrack?.clips.find((clip) => clip.id === "cap-2");
+    const mediaClip = project.tracks[0].clips.find((clip) => clip.id === "clip-talk-1");
+
+    expect(captionTrack?.clips.some((clip) => clip.id === "cap-1")).toBe(false);
+    expect(cap2?.startFrame).toBe(72);
+    expect(mediaClip?.startFrame).toBe(sampleProject.tracks[0].clips[0].startFrame);
+    expect(validateProject(project).ok).toBe(true);
+  });
+
+  it("rejects ripple remove on locked layers", () => {
+    const lockedProject = applyCommandsChecked(sampleProject, [
+      { type: "updateTrackState", trackId: "layer-3", locked: true }
+    ]).project;
+
+    expect(() => applyCommandsChecked(lockedProject, [{ type: "rippleRemoveClip", clipId: "cap-1" }])).toThrow(
+      /Track is locked/
+    );
+  });
+
+  it("ripple-removes the selected timeline object through the store and supports undo", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("cap-1");
+
+    useProjectStore.getState().rippleRemoveSelectedClip();
+
+    let cap2 = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips)
+      .find((clip) => clip.id === "cap-2");
+    expect(cap2?.startFrame).toBe(72);
+    expect(useProjectStore.getState().selectedClipId).toBe("cap-2");
+
+    useProjectStore.getState().undo();
+    cap2 = useProjectStore
+      .getState()
+      .project.tracks.flatMap((track) => track.clips)
+      .find((clip) => clip.id === "cap-2");
+    expect(cap2?.startFrame).toBe(138);
+    expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips).some((clip) => clip.id === "cap-1")).toBe(true);
+  });
+
+  it("reports an error when ripple removing without a selected object", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("");
+    const clipCountBefore = useProjectStore.getState().project.tracks.flatMap((track) => track.clips).length;
+
+    useProjectStore.getState().rippleRemoveSelectedClip();
+
+    expect(useProjectStore.getState().lastError).toContain("リップル削除");
+    expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips).length).toBe(clipCountBefore);
+  });
+
   it("reports an error when removing without a selected object", () => {
     useProjectStore.getState().resetSample();
     useProjectStore.getState().setSelectedClipId("");

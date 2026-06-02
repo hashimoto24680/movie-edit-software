@@ -103,6 +103,31 @@ const splitClip = (project: ProjectAst, command: Extract<ProjectCommand, { type:
   return next;
 };
 
+const removeClipFromProject = (project: ProjectAst, clipId: string, ripple: boolean): ProjectAst => {
+  const next = cloneProject(project);
+  const located = findClip(next, clipId);
+  if (!located) {
+    throw new Error(`Clip not found: ${clipId}`);
+  }
+  if (located.track.locked) {
+    throw new Error(`Track is locked: ${located.track.id}`);
+  }
+
+  const removedClip = located.clip;
+  const removedEndFrame = removedClip.startFrame + removedClip.durationFrames;
+  const track = next.tracks[located.trackIndex];
+  track.clips.splice(located.clipIndex, 1);
+
+  if (ripple) {
+    track.clips = track.clips.map((clip) =>
+      clip.startFrame >= removedEndFrame ? { ...clip, startFrame: Math.max(0, clip.startFrame - removedClip.durationFrames) } : clip
+    );
+    track.clips.sort((a, b) => a.startFrame - b.startFrame || a.id.localeCompare(b.id));
+  }
+
+  return next;
+};
+
 export const applyCommand = (project: ProjectAst, command: ProjectCommand): ProjectAst => {
   switch (command.type) {
     case "importAsset": {
@@ -180,17 +205,10 @@ export const applyCommand = (project: ProjectAst, command: ProjectCommand): Proj
         };
       });
     case "removeClip": {
-      const next = cloneProject(project);
-      const located = findClip(next, command.clipId);
-      if (!located) {
-        throw new Error(`Clip not found: ${command.clipId}`);
-      }
-      if (located.track.locked) {
-        throw new Error(`Track is locked: ${located.track.id}`);
-      }
-      next.tracks[located.trackIndex].clips.splice(located.clipIndex, 1);
-      return next;
+      return removeClipFromProject(project, command.clipId, false);
     }
+    case "rippleRemoveClip":
+      return removeClipFromProject(project, command.clipId, true);
     case "setVolume":
       return replaceClip(project, command.clipId, (clip) => {
         if (clip.type !== "media") {

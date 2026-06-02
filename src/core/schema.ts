@@ -212,6 +212,7 @@ export const projectCommandSchema = z.discriminatedUnion("type", [
     durationFrames: z.number().int().positive().optional()
   }),
   z.object({ type: z.literal("removeClip"), clipId: z.string().min(1) }),
+  z.object({ type: z.literal("rippleRemoveClip"), clipId: z.string().min(1) }),
   z.object({
     type: z.literal("setVolume"),
     clipId: z.string().min(1),

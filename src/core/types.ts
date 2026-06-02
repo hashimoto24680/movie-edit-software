@@ -168,6 +168,7 @@ export type ProjectCommand =
   | { type: "updateCaption"; clipId: string; text?: string; startFrame?: number; durationFrames?: number }
   | { type: "updateText"; clipId: string; text?: string; startFrame?: number; durationFrames?: number }
   | { type: "removeClip"; clipId: string }
+  | { type: "rippleRemoveClip"; clipId: string }
   | { type: "setVolume"; clipId: string; volume: number }
   | { type: "addTitle"; trackId: string; clip: TitleClip }
   | { type: "updateRenderSettings"; render: Partial<RenderSettings> }

@@ -43,6 +43,7 @@ interface ProjectStore {
   addTextAtPlayhead: () => void;
   splitSelectedClipAtPlayhead: () => void;
   removeSelectedClip: () => void;
+  rippleRemoveSelectedClip: () => void;
   addUnsupportedEffectToSelected: () => void;
   updateSelectedText: (text: string) => void;
   updateSelectedTextStyle: (patch: Record<string, unknown>) => void;
@@ -89,6 +90,14 @@ const syncFromHistory = (history: HistoryState) => {
     project,
     astJson: serializeProject(project)
   };
+};
+
+const nextClipIdInSameTrack = (project: ProjectAst, clipId: string): string => {
+  const track = project.tracks.find((candidate) => candidate.clips.some((clip) => clip.id === clipId));
+  if (!track) return "";
+  const sortedClips = [...track.clips].sort((a, b) => a.startFrame - b.startFrame || a.id.localeCompare(b.id));
+  const selectedIndex = sortedClips.findIndex((clip) => clip.id === clipId);
+  return sortedClips[selectedIndex + 1]?.id ?? sortedClips[selectedIndex - 1]?.id ?? "";
 };
 
 const clipFitsTrack = (track: Track, startFrame: number, durationFrames: number): boolean => {
@@ -259,6 +268,21 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     const removed = get().commitCommands(
       "Remove timeline object",
       [{ type: "removeClip", clipId: selectedClipId }],
+      "gui"
+    );
+    if (removed) set({ selectedClipId: nextSelectedClipId });
+  },
+  rippleRemoveSelectedClip: () => {
+    const { project, selectedClipId } = get();
+    const clips = allClips(project);
+    if (!clips.some(({ clip }) => clip.id === selectedClipId)) {
+      set({ lastError: "リップル削除するオブジェクトを選択してください。" });
+      return;
+    }
+    const nextSelectedClipId = nextClipIdInSameTrack(project, selectedClipId);
+    const removed = get().commitCommands(
+      "Ripple remove timeline object",
+      [{ type: "rippleRemoveClip", clipId: selectedClipId }],
       "gui"
     );
     if (removed) set({ selectedClipId: nextSelectedClipId });

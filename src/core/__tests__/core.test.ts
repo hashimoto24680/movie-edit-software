@@ -203,6 +203,74 @@ describe("project core", () => {
     expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips).length).toBe(clipCountBefore);
   });
 
+  it("splits the selected timeline object at the playhead through the store", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("clip-talk-1");
+    useProjectStore.getState().setPlayheadFrame(120);
+
+    useProjectStore.getState().splitSelectedClipAtPlayhead();
+
+    const clips = useProjectStore.getState().project.tracks.flatMap((track) => track.clips);
+    const left = clips.find((clip) => clip.id === "clip-talk-1");
+    const right = clips.find((clip) => clip.id === "clip-talk-1-split-120");
+    expect(left?.durationFrames).toBe(120);
+    expect(right?.startFrame).toBe(120);
+    expect(right?.durationFrames).toBe(120);
+    expect(right?.type === "media" ? right.sourceInFrame : null).toBe(480);
+    expect(useProjectStore.getState().selectedClipId).toBe("clip-talk-1-split-120");
+    expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
+  });
+
+  it("reports an error when splitting outside the selected object", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("clip-talk-1");
+    useProjectStore.getState().setPlayheadFrame(0);
+    const clipCountBefore = useProjectStore.getState().project.tracks.flatMap((track) => track.clips).length;
+
+    useProjectStore.getState().splitSelectedClipAtPlayhead();
+
+    expect(useProjectStore.getState().lastError).toContain("内側");
+    expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips).length).toBe(clipCountBefore);
+  });
+
+  it("removes the selected timeline object through the store", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("cap-1");
+
+    useProjectStore.getState().removeSelectedClip();
+
+    const clips = useProjectStore.getState().project.tracks.flatMap((track) => track.clips);
+    expect(clips.some((clip) => clip.id === "cap-1")).toBe(false);
+    expect(useProjectStore.getState().selectedClipId).toBe("cap-2");
+    expect(validateProject(useProjectStore.getState().project).ok).toBe(true);
+  });
+
+  it("reports an error when removing without a selected object", () => {
+    useProjectStore.getState().resetSample();
+    useProjectStore.getState().setSelectedClipId("");
+    const clipCountBefore = useProjectStore.getState().project.tracks.flatMap((track) => track.clips).length;
+
+    useProjectStore.getState().removeSelectedClip();
+
+    expect(useProjectStore.getState().lastError).toContain("削除");
+    expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips).length).toBe(clipCountBefore);
+  });
+
+  it("clears selection when removing the only timeline object", () => {
+    const singleClipProject = structuredClone(sampleProject);
+    singleClipProject.tracks = singleClipProject.tracks.map((track, index) => ({
+      ...track,
+      clips: index === 0 ? [structuredClone(sampleProject.tracks[0].clips[0])] : []
+    }));
+    useProjectStore.getState().loadProjectFileText(serializeProjectFile(singleClipProject));
+    useProjectStore.getState().setSelectedClipId("clip-talk-1");
+
+    useProjectStore.getState().removeSelectedClip();
+
+    expect(useProjectStore.getState().selectedClipId).toBe("");
+    expect(useProjectStore.getState().project.tracks.flatMap((track) => track.clips)).toEqual([]);
+  });
+
   it("runs GUI and LLM operations through the same reducer contract", () => {
     const llmText = JSON.stringify({
       message: "字幕を追加します。",

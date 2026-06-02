@@ -10,9 +10,11 @@ import {
   RotateCcw,
   RotateCw,
   Save,
+  Scissors,
   Settings,
   Sparkles,
   Move,
+  Trash2,
   Type,
   Upload,
   Wand2,
@@ -286,6 +288,8 @@ function Preview() {
   const project = useProjectStore((state) => state.project);
   const playheadFrame = useProjectStore((state) => state.playheadFrame);
   const addTextAtPlayhead = useProjectStore((state) => state.addTextAtPlayhead);
+  const splitSelectedClipAtPlayhead = useProjectStore((state) => state.splitSelectedClipAtPlayhead);
+  const removeSelectedClip = useProjectStore((state) => state.removeSelectedClip);
   const selectedClipId = useProjectStore((state) => state.selectedClipId);
   const setSelectedClipId = useProjectStore((state) => state.setSelectedClipId);
   const updateSelectedTransform = useProjectStore((state) => state.updateSelectedTransform);
@@ -335,10 +339,19 @@ function Preview() {
     <section className="preview-panel">
       <div className="preview-toolbar">
         <span />
-        <button className="tool-button" onClick={addTextAtPlayhead}>
-          <Type aria-hidden />
-          テキスト
-        </button>
+        <div className="button-row">
+          <button className="tool-button" onClick={addTextAtPlayhead}>
+            <Type aria-hidden />
+            テキスト
+          </button>
+          <button className="tool-button" onClick={splitSelectedClipAtPlayhead}>
+            <Scissors aria-hidden />
+            分割
+          </button>
+          <button className="icon-button" title="選択オブジェクトを削除" onClick={removeSelectedClip}>
+            <Trash2 aria-hidden />
+          </button>
+        </div>
       </div>
       <div className="preview-stage">
         <div

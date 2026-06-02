@@ -41,6 +41,8 @@ interface ProjectStore {
   undo: () => void;
   redo: () => void;
   addTextAtPlayhead: () => void;
+  splitSelectedClipAtPlayhead: () => void;
+  removeSelectedClip: () => void;
   addUnsupportedEffectToSelected: () => void;
   updateSelectedText: (text: string) => void;
   updateSelectedTextStyle: (patch: Record<string, unknown>) => void;
@@ -218,6 +220,43 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       "gui"
     );
     if (added) set({ selectedClipId: id });
+  },
+  splitSelectedClipAtPlayhead: () => {
+    const { project, selectedClipId, playheadFrame } = get();
+    const selected = allClips(project).find(({ clip }) => clip.id === selectedClipId)?.clip;
+    if (!selected) {
+      set({ lastError: "分割するオブジェクトを選択してください。" });
+      return;
+    }
+    const clipEndFrame = selected.startFrame + selected.durationFrames;
+    if (playheadFrame <= selected.startFrame || playheadFrame >= clipEndFrame) {
+      set({ lastError: "分割位置は選択オブジェクトの内側に置いてください。" });
+      return;
+    }
+    const newClipId = `${selected.id}-split-${playheadFrame}`;
+    const added = get().commitCommands(
+      "Split timeline object",
+      [{ type: "splitClip", clipId: selected.id, atFrame: playheadFrame, newClipId }],
+      "gui"
+    );
+    if (added) set({ selectedClipId: newClipId });
+  },
+  removeSelectedClip: () => {
+    const { project, selectedClipId } = get();
+    const clips = allClips(project);
+    const selectedIndex = clips.findIndex(({ clip }) => clip.id === selectedClipId);
+    if (selectedIndex < 0) {
+      set({ lastError: "削除するオブジェクトを選択してください。" });
+      return;
+    }
+    const nextSelectedClipId =
+      clips[selectedIndex + 1]?.clip.id ?? clips[selectedIndex - 1]?.clip.id ?? "";
+    const removed = get().commitCommands(
+      "Remove timeline object",
+      [{ type: "removeClip", clipId: selectedClipId }],
+      "gui"
+    );
+    if (removed) set({ selectedClipId: nextSelectedClipId });
   },
   addUnsupportedEffectToSelected: () => {
     const { selectedClipId } = get();

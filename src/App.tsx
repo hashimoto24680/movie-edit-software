@@ -46,6 +46,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   useEffect,
+  useCallback,
   useLayoutEffect,
   useRef,
   useState
@@ -829,13 +830,13 @@ function Timeline() {
   const snapPlayheadFrame = (frame: number): number =>
     timelineSnappingEnabled ? nearestSnapFrame(frame, snapFrames, snapThresholdFrames).frame : frame;
 
-  const frameFromTimelineCanvasX = (clientX: number): number => {
+  const frameFromTimelineCanvasX = useCallback((clientX: number): number => {
     const rect = timelineCanvasRef.current?.getBoundingClientRect();
     if (!rect) return 0;
     const laneLeft = rect.left + timelineLaneOffset;
     const ratio = clamp((clientX - laneLeft) / laneWidth, 0, 1);
     return Math.round(ratio * timelineFrameRange);
-  };
+  }, [laneWidth, timelineFrameRange]);
 
   const selectNearestClipInTrack = (event: ReactMouseEvent<HTMLElement>, track: Track) => {
     if ((event.target as HTMLElement).closest(".clip-block")) return;
@@ -980,7 +981,15 @@ function Timeline() {
       window.removeEventListener("pointermove", updateMarkerDrag);
       window.removeEventListener("pointerup", finishMarkerDrag);
     };
-  }, [laneWidth, markerDrag, snapFrames, snapThresholdFrames, timelineFrameRange, timelineSnappingEnabled, updateMarker, setPlayheadFrame]);
+  }, [
+    frameFromTimelineCanvasX,
+    markerDrag,
+    snapFrames,
+    snapThresholdFrames,
+    timelineSnappingEnabled,
+    updateMarker,
+    setPlayheadFrame
+  ]);
 
   const setPlayheadFromRulerPointer = (event: ReactPointerEvent<HTMLElement>): number => {
     const frame = snapPlayheadFrame(frameFromClientX(event.clientX, event.currentTarget, timelineFrameRange));
@@ -1788,6 +1797,7 @@ function ProjectPanel() {
   const updateMarker = useProjectStore((state) => state.updateMarker);
   const lastError = useProjectStore((state) => state.lastError);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const markerFrameStep = framesToSeconds(1, project.render.fps).toFixed(6);
 
   const saveProject = async () => {
     const text = exportProjectFileText();
@@ -1879,7 +1889,7 @@ function ProjectPanel() {
               aria-label={`${marker.label} seconds`}
               type="number"
               min={0}
-              step={1 / fpsToNumber(project.render.fps)}
+              step={markerFrameStep}
               value={framesToSeconds(marker.frame, project.render.fps)}
               onChange={(event) => updateMarker(marker.id, { frame: secondsToFrames(Number(event.target.value), project.render.fps) })}
             />

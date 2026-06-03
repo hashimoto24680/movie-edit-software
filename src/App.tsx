@@ -180,7 +180,7 @@ const hideNativeDragImage = (dataTransfer: DataTransfer) => {
   window.setTimeout(() => dragImage.remove(), 0);
 };
 
-const displayTrackName = (name: string): string => name.replace(/^Layer\s*(\d+)$/i, "レイヤー$1");
+const displayTrackName = (name: string): string => name.replace(/^(?:Layer|レイヤー)\s*(\d+)$/i, "L$1");
 
 const timelineLaneOffset = 116;
 
@@ -1102,7 +1102,6 @@ function Timeline() {
               onInput={(event) => setTimelineZoom(Number(event.currentTarget.value))}
               onChange={(event) => setTimelineZoom(Number(event.currentTarget.value))}
             />
-            <span>{framesToTimecode(visibleFrames, project.render.fps)}</span>
           </label>
         </div>
       </div>
@@ -1182,8 +1181,6 @@ function Timeline() {
             onPointerLeave={() => setPlayheadDragging(false)}
           >
             <span className="ruler-label start">0</span>
-            <span className="ruler-label middle">{framesToTimecode(Math.round(timelineFrameRange / 2), project.render.fps)}</span>
-            <span className="ruler-label end">{framesToTimecode(timelineFrameRange, project.render.fps)}</span>
           </div>
           {project.markers.map((marker) => (
             (() => {

@@ -598,24 +598,19 @@ input[type="range"] {
 }
 
 .timeline-zoom {
-  flex: 1 0 100%;
+  flex: 0 1 190px;
   display: grid;
-  grid-template-columns: auto minmax(120px, 1fr) minmax(90px, 108px);
+  grid-template-columns: auto minmax(82px, 140px);
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-  max-width: 100%;
+  max-width: 190px;
   color: #aebbc6;
   font-size: 12px;
 }
 
 .timeline-zoom input {
   min-width: 0;
-}
-
-.timeline-zoom span:last-child {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
 }
 
 .timeline-ruler {
@@ -783,20 +778,21 @@ input[type="range"] {
 
 .timeline-marker-line {
   top: 0;
-  bottom: 0;
+  height: 26px;
   z-index: 7;
   border: 0;
   padding: 0;
   cursor: ew-resize;
-  background: color-mix(in srgb, var(--marker-color, #f3d77c) 78%, transparent);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+  background: transparent;
+  box-shadow: none;
   pointer-events: auto;
+  transform: translateX(-50%);
 }
 
 .timeline-marker-line::after {
   content: "";
   position: absolute;
-  inset: 0 -5px;
+  inset: 0 -6px;
 }
 
 .timeline-marker-line::before {
@@ -805,9 +801,10 @@ input[type="range"] {
   top: 4px;
   left: 50%;
   width: 9px;
-  height: 12px;
+  height: 18px;
   background: var(--marker-color, #f3d77c);
-  clip-path: polygon(0 0, 100% 0, 100% 70%, 0 45%);
+  clip-path: polygon(0 0, 100% 0, 100% 56%, 56% 56%, 56% 100%, 44% 100%, 44% 56%, 0 56%);
+  opacity: 0.9;
   transform: translateX(-50%);
 }
 

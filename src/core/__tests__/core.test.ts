@@ -11,6 +11,7 @@ import { migrateProject } from "../migrations";
 import { ffmpegRenderer } from "../renderers/ffmpeg";
 import { sampleProject } from "../sampleProject";
 import { parseProjectFileJson, parseProjectJson, serializeProject, serializeProjectFile } from "../serializer";
+import { frameRangeContains } from "../time";
 import { nearestTimelineBoundary, timelineBoundaryFrames } from "../timelineNavigation";
 import { validateProject } from "../validation";
 import { useProjectStore } from "../../store/projectStore";
@@ -127,6 +128,13 @@ describe("project core", () => {
     expect(nearestTimelineBoundary(sampleProject, 9999, "next")).toBeNull();
     expect(timelineBoundaryFrames(sampleProject, "title-hero")).not.toContain(90);
     expect(timelineBoundaryFrames(sampleProject, "title-hero")).toContain(120);
+  });
+
+  it("treats timeline frame ranges as start-inclusive and end-exclusive", () => {
+    expect(frameRangeContains(0, 0, 240)).toBe(true);
+    expect(frameRangeContains(239, 0, 240)).toBe(true);
+    expect(frameRangeContains(240, 0, 240)).toBe(false);
+    expect(frameRangeContains(240, 240, 240)).toBe(true);
   });
 
   it("keeps keyframed properties in the same schema path as static values", () => {

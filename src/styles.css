@@ -825,15 +825,17 @@ input[type="range"] {
   position: absolute;
   top: 4px;
   bottom: 4px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   min-width: 0;
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--clip-color) 70%, white);
+  border: 0;
   border-radius: 0;
   color: #ffffff;
   background: var(--clip-color);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--clip-color) 70%, white);
   overflow: hidden;
   cursor: pointer;
   z-index: 1;
@@ -853,16 +855,21 @@ input[type="range"] {
 }
 
 .clip-block.selected {
-  z-index: 160;
+  z-index: 300;
   outline: none;
   overflow: visible;
-  box-shadow: inset 0 0 0 1px #f3d77c;
+  box-shadow: inset 0 0 0 2px #f3d77c;
+}
+
+.clip-block.selected.dragging {
+  z-index: 320;
 }
 
 .clip-block.dragging {
   z-index: 40;
   opacity: 0.78;
   box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--clip-color) 70%, white),
     0 0 0 2px rgba(243, 215, 124, 0.28);
 }
 
@@ -904,8 +911,11 @@ input[type="range"] {
   bottom: 2px;
   box-sizing: border-box;
   min-width: 0;
-  z-index: 220;
-  border: 2px solid #f3d77c;
+  z-index: 1000;
+  border: 0;
+  outline: 2px solid #f3d77c;
+  outline-offset: -1px;
+  box-shadow: 0 0 0 1px #f3d77c;
   pointer-events: none;
 }
 

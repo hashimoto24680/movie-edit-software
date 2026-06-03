@@ -54,7 +54,7 @@ import {
 import { resolveKeyboardShortcut } from "./core/keyboardShortcuts";
 import { calculateResizeScale } from "./core/previewResize";
 import { calculateRotation } from "./core/previewRotate";
-import { fpsToNumber, framesToSeconds, framesToTimecode, secondsToFrames } from "./core/time";
+import { fpsToNumber, frameRangeContains, framesToSeconds, framesToTimecode, secondsToFrames } from "./core/time";
 import { timelineBoundaryFrames } from "./core/timelineNavigation";
 import { hasSoloTracks, isTrackAudibleOrVisible } from "./core/trackVisibility";
 import { allClips } from "./core/validation";
@@ -71,7 +71,7 @@ const activeCanvasClips = (project: ProjectAst, frame: number): Array<{ track: T
   const soloTracksExist = hasSoloTracks(project);
   return allClips(project).filter(({ track, clip }) => {
     if (track.kind === "audio" || !isTrackAudibleOrVisible(project, track, soloTracksExist)) return false;
-    return frame >= clip.startFrame && frame <= clip.startFrame + clip.durationFrames;
+    return frameRangeContains(frame, clip.startFrame, clip.durationFrames);
   });
 };
 
@@ -797,6 +797,7 @@ function Timeline() {
   const timelineCanvasWidth = timelineLaneOffset + laneWidth;
   const frameToPercent = (frame: number): number =>
     (clamp(frame, 0, timelineFrameRange) / timelineFrameRange) * 100;
+  const frameSpanToPercent = (frames: number): number => (frames / timelineFrameRange) * 100;
   const frameToCanvasX = (frame: number): number =>
     timelineLaneOffset + (clamp(frame, 0, timelineFrameRange) / timelineFrameRange) * laneWidth;
   const timelinePlayheadLeft = frameToCanvasX(playheadFrame);
@@ -845,10 +846,11 @@ function Timeline() {
     const candidates = track.clips
       .map((clip) => {
         const endFrame = clip.startFrame + clip.durationFrames;
+        const isOwnerFrame = frameRangeContains(frame, clip.startFrame, clip.durationFrames);
         const distance =
-          frame >= clip.startFrame && frame <= endFrame
+          isOwnerFrame
             ? 0
-            : Math.min(Math.abs(frame - clip.startFrame), Math.abs(frame - endFrame));
+            : Math.min(Math.abs(frame - clip.startFrame), Math.abs(frame - endFrame)) + (frame === endFrame ? 1 : 0);
         return { clip, distance };
       })
       .filter(({ distance }) => distance <= thresholdFrames)
@@ -1288,7 +1290,7 @@ function Timeline() {
                   const displayFrame = isGroupDragging ? groupDragFrame : isTrimming ? timelineTrim.startFrame : clip.startFrame;
                   const left = frameToPercent(displayFrame);
                   const displayDuration = isTrimming ? timelineTrim.durationFrames : clip.durationFrames;
-                  const width = Math.max(0.15, (displayDuration / timelineFrameRange) * 100);
+                  const width = frameSpanToPercent(displayDuration);
                   const kind = clipKind(project, clip);
                   const isSelected = selectedClipIds.includes(clip.id);
                   if (isDragging && !draggedHere) return null;
@@ -1402,7 +1404,7 @@ function Timeline() {
                     const displayFrame = isGroupDragging ? groupDragFrame : isTrimming ? timelineTrim.startFrame : clip.startFrame;
                     const left = frameToPercent(displayFrame);
                     const displayDuration = isTrimming ? timelineTrim.durationFrames : clip.durationFrames;
-                    const width = Math.max(0.15, (displayDuration / timelineFrameRange) * 100);
+                    const width = frameSpanToPercent(displayDuration);
                     return (
                       <span
                         aria-hidden="true"
@@ -1420,7 +1422,7 @@ function Timeline() {
                       if (!dragged) return null;
                       const kind = clipKind(project, dragged);
                       const left = frameToPercent(timelineDrag.frame);
-                      const width = Math.max(0.15, (dragged.durationFrames / timelineFrameRange) * 100);
+                      const width = frameSpanToPercent(dragged.durationFrames);
                       return (
                         <>
                           <button

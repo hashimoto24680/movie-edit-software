@@ -42,3 +42,6 @@ export const framesToTimecode = (frames: number, fps: Fps): string => {
 
 export const frameRangeEnd = (startFrame: number, durationFrames: number): number =>
   startFrame + durationFrames;
+
+export const frameRangeContains = (frame: number, startFrame: number, durationFrames: number): boolean =>
+  frame >= startFrame && frame < frameRangeEnd(startFrame, durationFrames);

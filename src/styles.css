@@ -77,10 +77,11 @@ button {
   height: calc(100vh - 48px);
   min-height: 0;
   display: grid;
-  grid-template-columns: 190px minmax(480px, 1fr) 360px;
+  grid-template-columns: minmax(170px, 190px) minmax(0, 1fr) minmax(320px, 360px);
   gap: 10px;
   padding: 10px;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .asset-bin,
@@ -120,12 +121,14 @@ button {
   z-index: 1;
   grid-template-rows: minmax(280px, 1fr) 300px;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .right-stack {
   position: relative;
   z-index: 20;
   grid-template-rows: 210px 260px minmax(0, 1fr);
+  isolation: isolate;
 }
 
 .panel-title {
@@ -275,16 +278,33 @@ button:disabled {
 
 .preview-panel {
   display: grid;
-  grid-template-rows: 48px 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .preview-toolbar {
-  display: grid;
-  grid-template-columns: minmax(130px, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
   padding: 8px;
   border-bottom: 1px solid #29313a;
+}
+
+.preview-toolbar > span {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+
+.preview-toolbar .button-row {
+  flex: 1 1 520px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+  max-width: 100%;
+  row-gap: 6px;
 }
 
 .canvas-controls {
@@ -1322,6 +1342,6 @@ pre {
   }
 
   .workspace {
-    grid-template-columns: 190px minmax(500px, 1fr) 320px;
+    grid-template-columns: 170px minmax(0, 1fr) 320px;
   }
 }

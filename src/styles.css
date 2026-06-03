@@ -521,6 +521,7 @@ input[type="range"] {
   --timeline-lane-offset: calc(var(--track-label-width) + var(--track-gap));
   padding: 10px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .timeline-headline {
@@ -612,6 +613,7 @@ input[type="range"] {
   display: grid;
   gap: 3px;
   min-width: 100%;
+  overflow: hidden;
 }
 
 .track-row {

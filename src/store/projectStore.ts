@@ -7,7 +7,7 @@ import { createHistory, currentProjectFromHistory, redoHistory, undoHistory, com
 import { ffmpegRenderer, type FfmpegManifest } from "../core/renderers/ffmpeg";
 import { sampleProject } from "../core/sampleProject";
 import { parseProjectFileJson, serializeProject, serializeProjectFile } from "../core/serializer";
-import { secondsToFrames } from "../core/time";
+import { framesToTimecode, secondsToFrames } from "../core/time";
 import { nearestTimelineBoundary } from "../core/timelineNavigation";
 import { allClips } from "../core/validation";
 import type { Asset, AssetKind, CommandGroup, Point2D, ProjectAst, ProjectCommand, Track } from "../core/types";
@@ -20,6 +20,15 @@ export interface ImportedAssetFile {
   width?: number;
   height?: number;
   sampleRate?: number;
+}
+
+type AudioExportFormat = "mp3" | "wav";
+
+interface CaptureRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 interface ProjectStore {
@@ -96,6 +105,8 @@ interface ProjectStore {
   loadProjectFileText: (text: string) => void;
   generateRenderPlan: () => void;
   exportVideo: () => Promise<void>;
+  exportAudio: (format: AudioExportFormat) => Promise<void>;
+  exportFrameImage: (rect: CaptureRect) => Promise<void>;
   resetSample: () => void;
 }
 
@@ -1101,6 +1112,65 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       renderWarnings: plan.warnings,
       lastError: null
     });
+  },
+  exportAudio: async (format) => {
+    const { project } = get();
+    const plan = ffmpegRenderer.createManifest({
+      project,
+      outputPath: `movie-edit-output.${format}`,
+      exportKind: format === "mp3" ? "audio-mp3" : "audio-wav"
+    });
+    if (window.desktopProject?.exportAudio) {
+      const result = await window.desktopProject.exportAudio({
+        format,
+        manifest: plan.manifest,
+        projectText: serializeProjectFile(project)
+      });
+      if (result.canceled) return;
+      set({
+        renderPlan: plan.manifest,
+        renderStatus: result.message ?? `${format.toUpperCase()}書き出し設定を保存しました: ${result.manifestPath ?? result.filePath}`,
+        renderWarnings: plan.warnings,
+        lastError: null
+      });
+      return;
+    }
+
+    const blob = new Blob([JSON.stringify(plan.manifest, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `movie-edit-output.${format}.render.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    set({
+      renderPlan: plan.manifest,
+      renderStatus: `ブラウザ版の${format.toUpperCase()}書き出し設定を保存しました。`,
+      renderWarnings: plan.warnings,
+      lastError: null
+    });
+  },
+  exportFrameImage: async (rect) => {
+    const { project, playheadFrame } = get();
+    if (rect.width <= 0 || rect.height <= 0) {
+      set({ lastError: "プレビュー範囲を取得できませんでした。" });
+      return;
+    }
+    const timecode = framesToTimecode(playheadFrame, project.render.fps);
+    if (window.desktopProject?.exportFrameImage) {
+      const result = await window.desktopProject.exportFrameImage({
+        rect,
+        frame: playheadFrame,
+        timecode
+      });
+      if (result.canceled) return;
+      set({
+        renderStatus: result.message ?? `現在フレームの画像を保存しました: ${result.filePath}`,
+        lastError: null
+      });
+      return;
+    }
+    set({ lastError: "フレーム画像の書き出しはデスクトップアプリで利用できます。" });
   },
   resetSample: () => {
     const history = createHistory(sampleProject);

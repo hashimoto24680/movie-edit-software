@@ -5,5 +5,7 @@ contextBridge.exposeInMainWorld("desktopProject", {
   openProject: () => ipcRenderer.invoke("project:open"),
   openAssetFiles: () => ipcRenderer.invoke("asset:open"),
   exportVideo: (payload) => ipcRenderer.invoke("video:export", payload),
+  exportAudio: (payload) => ipcRenderer.invoke("audio:export", payload),
+  exportFrameImage: (payload) => ipcRenderer.invoke("frame:export", payload),
   sendLlmPrompt: (payload) => ipcRenderer.invoke("llm:prompt", payload)
 });

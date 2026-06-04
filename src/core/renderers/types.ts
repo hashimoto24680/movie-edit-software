@@ -1,8 +1,11 @@
 import type { ProjectAst } from "../types";
 
+export type RenderExportKind = "video" | "audio-mp3" | "audio-wav";
+
 export interface RenderRequest {
   project: ProjectAst;
   outputPath: string;
+  exportKind?: RenderExportKind;
   range?: {
     startFrame: number;
     durationFrames: number;

@@ -1,4 +1,5 @@
 import {
+  Camera,
   ChevronsLeft,
   Clock,
   Copy,
@@ -338,6 +339,7 @@ function Preview() {
   const moveSelectedClipToAdjacentBoundary = useProjectStore((state) => state.moveSelectedClipToAdjacentBoundary);
   const jumpPlayheadToSelectedBoundary = useProjectStore((state) => state.jumpPlayheadToSelectedBoundary);
   const jumpPlayheadToTimelineBoundary = useProjectStore((state) => state.jumpPlayheadToTimelineBoundary);
+  const exportFrameImage = useProjectStore((state) => state.exportFrameImage);
   const activeClips = activeCanvasClips(project, playheadFrame);
   const frameRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{
@@ -366,6 +368,17 @@ function Preview() {
     event.preventDefault();
     setSelectedClipId(clip.id);
     setDrag({ clipId: clip.id, start: position, current: position, axis: null });
+  };
+
+  const exportCurrentFrameImage = () => {
+    const rect = frameRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    void exportFrameImage({
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height
+    });
   };
 
   const updateCanvasDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -532,6 +545,9 @@ function Preview() {
           </button>
           <button className="icon-button" title="下へ整列" onClick={() => alignSelectedVertically("bottom")}>
             <MoveDown aria-hidden />
+          </button>
+          <button className="icon-button" title="現在フレームをPNGで書き出し" onClick={exportCurrentFrameImage}>
+            <Camera aria-hidden />
           </button>
         </div>
       </div>
@@ -1790,6 +1806,7 @@ function ProjectPanel() {
   const renderStatus = useProjectStore((state) => state.renderStatus);
   const renderWarnings = useProjectStore((state) => state.renderWarnings);
   const exportVideo = useProjectStore((state) => state.exportVideo);
+  const exportAudio = useProjectStore((state) => state.exportAudio);
   const exportProjectFileText = useProjectStore((state) => state.exportProjectFileText);
   const loadProjectFileText = useProjectStore((state) => state.loadProjectFileText);
   const removeMarker = useProjectStore((state) => state.removeMarker);
@@ -1860,7 +1877,15 @@ function ProjectPanel() {
         </button>
         <button className="tool-button" onClick={exportVideo}>
           <Download aria-hidden />
-          書き出し
+          MP4
+        </button>
+        <button className="tool-button" onClick={() => exportAudio("mp3")}>
+          <Download aria-hidden />
+          MP3
+        </button>
+        <button className="tool-button" onClick={() => exportAudio("wav")}>
+          <Download aria-hidden />
+          WAV
         </button>
       </div>
       <div className="marker-list">

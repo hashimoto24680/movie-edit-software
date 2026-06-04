@@ -1,7 +1,7 @@
 import { framesToTimecode } from "../time";
 import { hasSoloTracks, isTrackAudibleOrVisible } from "../trackVisibility";
 import type { Clip, ProjectAst, Track } from "../types";
-import type { Renderer, RenderRequest } from "./types";
+import type { Renderer, RenderExportKind, RenderRequest } from "./types";
 
 export interface FfmpegInput {
   assetId: string;
@@ -23,6 +23,7 @@ export interface FfmpegSegment {
 export interface FfmpegManifest {
   projectId: string;
   outputPath: string;
+  exportKind: RenderExportKind;
   size: {
     width: number;
     height: number;
@@ -99,8 +100,19 @@ const collectWarnings = (project: ProjectAst): string[] => {
   return warnings;
 };
 
-const createCommandPreview = (project: ProjectAst, inputs: FfmpegInput[], outputPath: string): string => {
+const createCommandPreview = (
+  project: ProjectAst,
+  inputs: FfmpegInput[],
+  outputPath: string,
+  exportKind: RenderExportKind
+): string => {
   const inputArgs = inputs.map((input) => `-i "${input.path}"`).join(" ");
+  if (exportKind === "audio-mp3") {
+    return `ffmpeg ${inputArgs} -vn -c:a libmp3lame -q:a 2 "${outputPath}"`;
+  }
+  if (exportKind === "audio-wav") {
+    return `ffmpeg ${inputArgs} -vn -c:a pcm_s16le "${outputPath}"`;
+  }
   const size = `${project.render.size.width}x${project.render.size.height}`;
   const fps = `${project.render.fps.num}/${project.render.fps.den}`;
   return `ffmpeg ${inputArgs} -r ${fps} -s ${size} -c:v libx264 -c:a aac "${outputPath}"`;
@@ -111,14 +123,16 @@ export const ffmpegRenderer: Renderer<FfmpegManifest> = {
   name: "FFmpeg MVP Renderer",
   createManifest(request: RenderRequest) {
     const inputs = collectInputs(request.project);
+    const exportKind = request.exportKind ?? "video";
     const manifest: FfmpegManifest = {
       projectId: request.project.id,
       outputPath: request.outputPath,
+      exportKind,
       size: request.project.render.size,
       fps: `${request.project.render.fps.num}/${request.project.render.fps.den}`,
       inputs,
       segments: collectSegments(request.project),
-      commandPreview: createCommandPreview(request.project, inputs, request.outputPath)
+      commandPreview: createCommandPreview(request.project, inputs, request.outputPath, exportKind)
     };
 
     return {

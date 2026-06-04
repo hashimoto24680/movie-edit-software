@@ -24,6 +24,26 @@ interface DesktopProjectApi {
     commandPath?: string;
     message?: string;
   }>;
+  exportAudio?: (payload: {
+    format: "mp3" | "wav";
+    manifest: unknown;
+    projectText: string;
+  }) => Promise<{
+    canceled: boolean;
+    filePath?: string;
+    manifestPath?: string;
+    commandPath?: string;
+    message?: string;
+  }>;
+  exportFrameImage?: (payload: {
+    rect: { x: number; y: number; width: number; height: number };
+    frame: number;
+    timecode: string;
+  }) => Promise<{
+    canceled: boolean;
+    filePath?: string;
+    message?: string;
+  }>;
   sendLlmPrompt?: (payload: { prompt: string; projectText: string }) => Promise<string>;
 }
 

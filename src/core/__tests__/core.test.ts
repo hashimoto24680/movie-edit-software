@@ -170,6 +170,26 @@ describe("project core", () => {
     expect(JSON.stringify(first.manifest)).toBe(JSON.stringify(second.manifest));
   });
 
+  it("creates audio ffmpeg manifests for mp3 and wav exports", () => {
+    const mp3 = ffmpegRenderer.createManifest({
+      project: sampleProject,
+      outputPath: "out.mp3",
+      exportKind: "audio-mp3"
+    });
+    const wav = ffmpegRenderer.createManifest({
+      project: sampleProject,
+      outputPath: "out.wav",
+      exportKind: "audio-wav"
+    });
+
+    expect(mp3.manifest.exportKind).toBe("audio-mp3");
+    expect(mp3.manifest.commandPreview).toContain("-vn -c:a libmp3lame -q:a 2");
+    expect(mp3.manifest.commandPreview).toContain("\"out.mp3\"");
+    expect(wav.manifest.exportKind).toBe("audio-wav");
+    expect(wav.manifest.commandPreview).toContain("-vn -c:a pcm_s16le");
+    expect(wav.manifest.commandPreview).toContain("\"out.wav\"");
+  });
+
   it("updates canvas resolution and clip transform through commands", () => {
     const { project } = applyCommandsChecked(sampleProject, [
       { type: "updateRenderSettings", render: { size: { width: 1920, height: 1080 } } },
